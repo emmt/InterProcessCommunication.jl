@@ -13,7 +13,7 @@ module IPC
 
 import Base: convert, getindex, setindex!, eltype, length, ndims, sizeof,
              size, eachindex, linearindexing, stride, strides,
-             reinterpret, reshape, copy, copy!, show, string
+             reinterpret, reshape, copy, copy!, show, string, pointer
 
 export ShmArray, shmget, shmid, shmat, shmdt, shmrm, shmcfg, shminfo, shminfo!
 

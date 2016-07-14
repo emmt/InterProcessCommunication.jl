@@ -13,7 +13,7 @@ immutable ShmId
     value::Cint
 end
 
-type ShmArray{T,N} <: AbstractArray{T,N}
+type ShmArray{T,N} <: DenseArray{T,N}
     # All members shall be considered as private.
     _buf::Array{T,N}
     _ptr::Ptr{Void}
@@ -210,6 +210,8 @@ strides(shm::ShmArray) = strides(shm._buf)
 copy(shm::ShmArray) = copy(shm._buf)
 
 copy!(dest::ShmArray, src::AbstractArray) = (copy!(dest._buf, src); dest)
+
+pointer(shm::ShmArray) = pointer(shm._buf)
 
 reinterpret{T}(::Type{T}, shm::ShmArray) =
     reinterpret(T, shm._buf)
