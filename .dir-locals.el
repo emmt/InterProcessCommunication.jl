@@ -11,6 +11,5 @@
  (sh-mode . ((sh-basic-offset . 4)))
  (tcl-mode . ((tcl-default-application . "wish")
 	      (tcl-indent-level . 2)))
- (yorick-mode . ((c-basic-offset . 2)
-                 (fill-column . 78)))
-)
+ (yorick-mode . ((c-basic-offset . 2)))
+ )
