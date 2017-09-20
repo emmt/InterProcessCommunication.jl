@@ -48,7 +48,7 @@ const BAD_PTR = Core.Intrinsics.box(Ptr{Void}, -1)
 
 # a bit of magic for calling C-code:
 convert(::Type{Cint}, id::ShmId) = id.value
-convert(::Type{ASCIIString}, id::ShmId) = string(id)
+convert(::Type{String}, id::ShmId) = string(id)
 
 string(id::ShmId) = dec(id.value)
 show(io::IO, id::ShmId) =
@@ -140,7 +140,7 @@ function ShmArray(id::ShmId, T::DataType=UInt8;
     @assert isbits(T)
     ptr = shmat(id, readonly, info)
     len = div(info.segsz/sizeof(T))
-    buf = pointer_to_array(convert(Ptr{T}, ptr), len, false)
+    buf = unsafe_wrap(Array, convert(Ptr{T}, ptr), len, false)
     return ShmArray{T,N}(buf, ptr, id)
 end
 
@@ -156,7 +156,7 @@ function ShmArray{T,N}(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
         shmdt(ptr)
         error("shared memory segment is too small")
     end
-    buf = pointer_to_array(convert(Ptr{T}, ptr), dims, false)
+    buf = unsafe_wrap(Array, convert(Ptr{T}, ptr), dims, false)
     return ShmArray{T,N}(buf, ptr, id)
 end
 

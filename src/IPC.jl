@@ -6,10 +6,13 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016, Éric Thiébaut (https://github.com/emmt).
+# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 module IPC
+
+using Compat
+import Compat.String
 
 import Base: convert, getindex, setindex!, eltype, length, ndims, sizeof,
              size, eachindex, linearindexing, stride, strides,
@@ -17,10 +20,7 @@ import Base: convert, getindex, setindex!, eltype, length, ndims, sizeof,
 
 export ShmArray, shmget, shmid, shmat, shmdt, shmrm, shmcfg, shminfo, shminfo!
 
-
-# ~/.julia/modules/IPC/deps/lib/libswl.so
-const libswl = joinpath(homedir(), ".julia", "modules", "IPC", "deps", "lib",
-                        "libswl."*Libdl.dlext)
+const libswl = joinpath(@__DIR__, "..", "deps", "lib", "libswl."*Libdl.dlext)
 
 const SUCCESS = Cint( 0)
 const FAILURE = Cint(-1)
@@ -51,7 +51,7 @@ const PRIVATE = Key(0)
 # a bit of magic for calling C-code:
 convert(::Type{Cint}, key::Key) = key.value
 #convert{T<:Integer}(::Type{T}, ipckey::Key) = convert(T, ipckey.value)
-convert(::Type{ASCIIString}, key::Key) = string(key)
+convert(::Type{String}, key::Key) = string(key)
 
 string(key::Key) = dec(key.value)
 show(io::IO, key::Key) = (write(io, "IPC.Key: "*dec(key.value)); nothing)
@@ -84,6 +84,7 @@ end
 syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
     string(msg," [",Libc.strerror(code),"]")
 
+makedims{N}(dims::NTuple{N,Int}) = dims
 makedims{N}(dims::NTuple{N,Integer}) = ntuple(i -> Int(dims[i]), N)
 makedims{T<:Integer}(dims::Array{T,1}) = ntuple(i -> Int(dims[i]), length(dims))
 
