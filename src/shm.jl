@@ -9,42 +9,7 @@
 # Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
-immutable ShmId
-    value::Cint
-end
-
-type ShmArray{T,N} <: DenseArray{T,N}
-    # All members shall be considered as private.
-    _buf::Array{T,N}
-    _ptr::Ptr{Void}
-    _id::ShmId
-    function ShmArray(buf::Array{T,N}, ptr::Ptr{Void},
-                               id::ShmId)
-        @assert pointer(buf) == ptr
-        obj = new(buf, ptr, id)
-        finalizer(obj, obj -> shmdt(obj._ptr))
-        return obj
-    end
-end
-
-type ShmInfo
-    atime::UInt64 # last attach time
-    dtime::UInt64 # last detach time
-    ctime::UInt64 # last change time
-    segsz::UInt64 # size of the public area
-    id::Int32     # shared memory identifier
-    cpid::Int32   # process ID of creator
-    lpid::Int32   # process ID of last operator
-    nattch::Int32 # no. of current attaches
-    mode::UInt32  # lower 9 bits of access modes
-    uid::UInt32   # effective user ID of owner
-    gid::UInt32   # effective group ID of owner
-    cuid::UInt32  # effective user ID of creator
-    cgid::UInt32  # effective group ID of creator
-    ShmInfo() = new(0,0,0,0,0,0,0,0,0,0,0,0,0)
-end
-
-const BAD_PTR = Core.Intrinsics.box(Ptr{Void}, -1)
+const BAD_PTR = Ptr{Void}(-1)
 
 # a bit of magic for calling C-code:
 convert(::Type{Cint}, id::ShmId) = id.value
@@ -140,7 +105,7 @@ function ShmArray(id::ShmId, T::DataType=UInt8;
     @assert isbits(T)
     ptr = shmat(id, readonly, info)
     len = div(info.segsz/sizeof(T))
-    buf = unsafe_wrap(Array, convert(Ptr{T}, ptr), len, false)
+    buf = unsafe_wrap(Array, Ptr{T}(ptr), len, false)
     return ShmArray{T,N}(buf, ptr, id)
 end
 
@@ -156,7 +121,7 @@ function ShmArray{T,N}(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
         shmdt(ptr)
         error("shared memory segment is too small")
     end
-    buf = unsafe_wrap(Array, convert(Ptr{T}, ptr), dims, false)
+    buf = unsafe_wrap(Array, Ptr{T}(ptr), dims, false)
     return ShmArray{T,N}(buf, ptr, id)
 end
 
@@ -201,7 +166,7 @@ size(shm::ShmArray, i::Number) = size(shm._buf, i)
 
 eachindex(shm::ShmArray) = eachindex(shm._buf)
 
-linearindexing{T<:ShmArray}(::Type{T}) = Base.LinearFast()
+@compat Base.IndexStyle(::Type{<:ShmArray}) = Base.IndexLinear()
 
 stride(shm::ShmArray, i::Integer) = stride(shm._buf, i)
 

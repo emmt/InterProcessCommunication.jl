@@ -42,8 +42,10 @@ const IROTH = Cuint(00004) # others have read permission
 const IWOTH = Cuint(00002) # others have write permission
 const IXOTH = Cuint(00001) # others have execute permission
 
-immutable Key
-    value::Cint
+@static if VERSION ≥ v"0.6"
+    include("types.jl")
+else
+    include("oldtypes.jl")
 end
 
 const PRIVATE = Key(0)
