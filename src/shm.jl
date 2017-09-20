@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016, Éric Thiébaut (https://github.com/emmt).
+# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 immutable ShmId
@@ -57,7 +57,7 @@ show(io::IO, id::ShmId) =
 """
 # Array attached to a shared memory segment
 
-The methods `ShmArray()` return an array whose elements are stored in shared
+The method `ShmArray()` returns an array whose elements are stored in shared
 memory.  There are different possibilities depending whether a new shared
 memory segment should be created or one wants to attach an array to an existing
 memory segment.
@@ -66,14 +66,14 @@ To get an array attached to a new *volatile* shared memory segment:
 
     ShmArray(T, dims...; key=IPC.PRIVATE, perms=...)
 
-where `T` and `dims` are the type of the array elements and the dimensions of
-the array.  The shared memory segment is *volatile* in the sense that it will
-be automatically destroyed when no more processes are attached to it.  Keyword
-`key` may be used to specify an IPC key other than the default `IPC.PRIVATE`.
-If `key` is not `IPC.PRIVATE`, the method will fail if an IPC identifer already
-exists with that key.  Keyword `perms` can be used to specify the access
-permissions for the created shared memory segment, at least read-write access
-to the caller will be granted.
+where `T` and `dims` are the element type and the dimensions of the array.  The
+shared memory segment is *volatile* in the sense that it will be automatically
+destroyed when no more processes are attached to it.  Keyword `key` may be used
+to specify an IPC key other than the default `IPC.PRIVATE`.  If `key` is not
+`IPC.PRIVATE`, the method will fail if an IPC identifer already exists with
+that key.  Keyword `perms` can be used to specify the access permissions for
+the created shared memory segment, at least read-write access to the caller
+will be granted.
 
 To attach an array to an existing shared memory segment:
 
@@ -83,13 +83,13 @@ To attach an array to an existing shared memory segment:
 
 where `id` is the identifier of the shared memory segment of the IPC key
 associated with it.  Arguments `T` and `dims` specify the element type and the
-dimensions of the array assiocated with the attached shared memory segment.  If
-the element type is not specified, it defaults to `UInt8`.  If the dimensions
-are not specified, the result is a the longuest vector of that type which fits
-in the shared memory segment.  Keyword `info` may be set with an instance of
+dimensions of the array associated with the attached shared memory segment.  If
+the element type is not specified, `UInt8` is assumed.  If the dimensions are
+not specified, the result is a the longest vector of that type which fits in
+the shared memory segment.  Keyword `info` may be set with an instance of
 `ShmInfo` to store information about the shared memory segment.  Keyword
 `readonly` may be set `true` to require read-only access to the shared memory.
-Bt default, a read-write access is granted.  Whatever the requested access, the
+By default, a read-write access is granted.  Whatever the requested access, the
 caller must have sufficient permissions.
 
 Finally:
@@ -229,15 +229,13 @@ The following calls:
     shmid(key, readlony=false) -> id
 
 yield the the identifier of the existing shared memory segment associated with
-the value of the first argument.  `id` is the identifer of the shared memory
+the value of the first argument.  `id` is the identifier of the shared memory
 segment, `shm` is a shared array attached to the shared memory segment and
 `key` is the key associated with the shared memory segment.  In that latter
 case, `readlony` can be set `true` to only request read-only access; otherwise
-read-write acess is requested.
+read-write access is requested.
 
 """
-function shmid end
-
 shmid(id::ShmId) = id
 shmid(shm::ShmArray) = shm._id
 shmid(key::Key, readonly::Bool=false) =
@@ -284,13 +282,13 @@ function shmget(key::Key, siz::Integer, flg::Integer)
 end
 
 """
-To attach a shared memory segment to the address space of the caller, call:
 
     shmat(id, readonly, info) -> ptr
 
-with `id` the identifer of the shared memory segment.  Boolean argument
+attaches a shared memory segment to the address space of the caller.  Argument
+`id` is he identifier of the shared memory segment.  Boolean argument
 `readonly` specifies whether to attach the segment for read-only access;
-otheriwse (the default), the segment is attached for read and write access, and
+otherwise (the default), the segment is attached for read and write access, and
 the process must have read and write permission for the segment.  Argument
 `info` is used to store information about the shared memory segment.  The
 returned value is the pointer to access the shared memory segment.
@@ -308,11 +306,11 @@ function shmat(id::ShmId, readonly::Bool,
 end
 
 """
-To detach a shared memory segment from the address space of the caller, call:
 
     shmdt(ptr)
 
-with `ptr` the pointer returned by a previous `shmat()` call.
+detaches a shared memory segment from the address space of the caller.
+Argument `ptr` is the pointer returned by a previous `shmat()` call.
 
 """
 function shmdt(ptr::Ptr{Void})
