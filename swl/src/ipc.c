@@ -12,7 +12,7 @@
 
 #define BITCONV(flg, bit, val)  (((flg)&(bit)) == (bit) ? (val) : 0U)
 
-#define MODE_MASK 0777U
+#define PERMS_MASK 0777U
 
 int SWL_GenerateKey(const char* path, int proj)
 {
@@ -42,7 +42,7 @@ int SWL_GetSharedMemory(int key, size_t siz, unsigned int flg)
 {
   int shmflg;
 
-  shmflg = ((flg & MODE_MASK) |
+  shmflg = ((flg & PERMS_MASK) |
             BITCONV(flg, SWL_CREAT, IPC_CREAT) |
             BITCONV(flg, SWL_EXCL,  IPC_EXCL));
   if (key == SWL_PRIVATE) {
@@ -109,8 +109,8 @@ int SWL_ConfigureSharedMemory(int id, unsigned int flg)
   if (shmctl(id, IPC_STAT, &ds) == -1) {
     return SWL_FAILURE;
   }
-  if ((ds.shm_perm.mode & MODE_MASK) != (flg & MODE_MASK)) {
-    ds.shm_perm.mode = (ds.shm_perm.mode & ~MODE_MASK) | (flg & MODE_MASK);
+  if ((ds.shm_perm.mode & PERMS_MASK) != (flg & PERMS_MASK)) {
+    ds.shm_perm.mode = (ds.shm_perm.mode & ~PERMS_MASK) | (flg & PERMS_MASK);
     if (shmctl(id, IPC_SET, &ds) == -1) {
       return SWL_FAILURE;
     }
