@@ -9,6 +9,8 @@
 # Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
+isdefined(Base, :__precompile__) && __precompile__(true)
+
 module IPC
 
 using Compat
