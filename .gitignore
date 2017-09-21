@@ -1,5 +1,9 @@
 work/
-deps/
+deps/constants.jl
+deps/*.o
+deps/gencode
+deps/build
+deps/lib
 *~
 *.jl.cov
 *.jl.mem
