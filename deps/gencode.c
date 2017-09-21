@@ -31,10 +31,10 @@
 #define DEF_TYPEOF_LVALUE(name, lval)                   \
   do {                                                  \
     SET_ALL_BITS(lval);                                 \
-    fprintf(output, "const _typeof_%s = %sInt%u\n",	\
-            name, (lval < 0 ? "" : "U"),		\
-            (unsigned)(8*sizeof(lval)));		\
-							\
+    fprintf(output, "const _typeof_%s = %sInt%u\n",     \
+            name, (lval < 0 ? "" : "U"),                \
+            (unsigned)(8*sizeof(lval)));                \
+                                                        \
   } while (0)
 
 /* Define a Julia alias for a C integer, given its type (`space` is used for
@@ -43,15 +43,15 @@
   do {                                                  \
     type lval;                                          \
     SET_ALL_BITS(lval);                                 \
-    fprintf(output, "const _typeof_%s%s = %sInt%u\n",	\
+    fprintf(output, "const _typeof_%s%s = %sInt%u\n",   \
             #type, space, (lval < 0 ? "" : "U"),        \
-            (unsigned)(8*sizeof(lval)));		\
-							\
+            (unsigned)(8*sizeof(lval)));                \
+                                                        \
   } while (0)
 
 /* Define a Julia constant with the offset (in bytes) of a field of a
  * C-structure. */
-#define DEF_OFFSET(ident, type, field)					\
+#define DEF_OFFSET(ident, type, field)                                  \
   fprintf(output, "const " ident " = %3ld\n", (long)OFFSET_OF(type, field))
 
 /* Define a Julia constant with the size of a given C-type. */
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
   FILE* output = stdout;
 
   if (argc == 2 && (strcmp(argv[1], "--help") == 0 ||
-		    strcmp(argv[1], "-h") == 0)) {
+                    strcmp(argv[1], "-h") == 0)) {
   usage:
     fprintf(stderr, "Usage: %s [--help|-h]\n", argv[0]);
     return status;
