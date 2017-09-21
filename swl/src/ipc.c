@@ -97,7 +97,7 @@ int SWL_QuerySharedMemoryInfo(int id, SWL_SharedMemoryInfo* info)
     info->uid	 = ds.shm_perm.uid;
     info->gid	 = ds.shm_perm.gid;
     info->cuid   = ds.shm_perm.cuid;
-    info->cgid   = ds.shm_perm.cuid;
+    info->cgid   = ds.shm_perm.cgid;
   }
   return SWL_SUCCESS;
 }
