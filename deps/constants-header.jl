@@ -15,4 +15,3 @@
 # Standard codes returned by many functions of the C library:
 const SUCCESS = Cint( 0)
 const FAILURE = Cint(-1)
-
