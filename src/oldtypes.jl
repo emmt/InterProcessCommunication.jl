@@ -1,3 +1,24 @@
+#
+# oldtypes.jl --
+#
+# Definitions fo types for IPC module of Julia up to version 0.5.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of IPC.jl released under the MIT "expat" license.
+# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+#
+
+immutable TimeVal
+    tv_sec::_typeof_tv_sec    # seconds
+    tv_usec::_typeof_tv_usec  # microseconds
+end
+
+immutable TimeSpec
+    tv_sec::_typeof_tv_sec    # seconds
+    tv_nsec::_typeof_tv_nsec  # nanoseconds
+end
+
 immutable Key
     value::_typeof_key_t
 end

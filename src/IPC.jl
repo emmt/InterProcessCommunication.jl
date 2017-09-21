@@ -21,6 +21,9 @@ import Base: convert, getindex, setindex!, eltype, length, ndims, sizeof,
              reinterpret, reshape, copy, copy!, show, string, pointer
 
 export
+    TimeVal,
+    TimeSpec,
+    gettimeofday,
     ShmArray,
     shmget,
     shmid,

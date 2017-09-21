@@ -1,3 +1,24 @@
+#
+# types.jl --
+#
+# Definitions fo types for IPC module of Julia.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of IPC.jl released under the MIT "expat" license.
+# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+#
+
+struct TimeVal
+    tv_sec::_typeof_tv_sec    # seconds
+    tv_usec::_typeof_tv_usec  # microseconds
+end
+
+struct TimeSpec
+    tv_sec::_typeof_tv_sec    # seconds
+    tv_nsec::_typeof_tv_nsec  # nanoseconds
+end
+
 struct Key
     value::_typeof_key_t
 end
