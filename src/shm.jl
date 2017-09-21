@@ -103,7 +103,7 @@ ShmArray{T}(::Type{T}, dims::Integer...; kwds...) =
 function ShmArray(id::ShmId, T::DataType=UInt8;
                   readonly::Bool=false, info::ShmInfo=ShmInfo())
     @assert isbits(T)
-    ptr = shmat(id, readonly, info)
+    ptr = shmat!(id, readonly, info)
     len = div(info.segsz/sizeof(T))
     buf = unsafe_wrap(Array, Ptr{T}(ptr), len, false)
     return ShmArray{T,N}(buf, ptr, id)
@@ -116,9 +116,9 @@ function ShmArray{T,N}(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
                        readonly::Bool=false, info::ShmInfo=ShmInfo())
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
-    ptr = shmat(id, readonly, info)
+    ptr = shmat!(id, readonly, info)
     if info.segsz < siz
-        shmdt(ptr)
+        _shmdt(ptr)
         error("shared memory segment is too small")
     end
     buf = unsafe_wrap(Array, Ptr{T}(ptr), dims, false)
@@ -217,7 +217,7 @@ yields the identifier of the shared memory segment associated with the value of
 the argument `key`.  A new shared memory segment, with size equal to the value
 of `siz` (possibly rounded up to a multiple of the memory page size), is
 created if `key` has the value `IPC.PRIVATE` or `key` isn't `IPC.PRIVATE`, no
-shared memory segment corresponding to `key` exists, and `IPC.O_CREAT` is
+shared memory segment corresponding to `key` exists, and `IPC_CREAT` is
 specified in argument `flg`.
 
 Arguments are:
@@ -230,42 +230,60 @@ Arguments are:
 * `flg` specify bitwise flags.  The least significant 9 bits specify the
   permissions granted to the owner, group, and others.  These bits have the
   same format, and the same meaning, as the mode argument of `chmod`.  Bit
-  `IPC.O_CREAT` can be set to create a new segment.  If this flag is not used,
+  `IPC_CREAT` can be set to create a new segment.  If this flag is not used,
   then `shmget` will find the segment associated with `key` and
   check to see if the user has permission to access the segment.  Bit
-  `IPC.O_EXCL` can be set in addition to `IPC.O_CREAT` to ensure that this call
+  `IPC_EXCL` can be set in addition to `IPC_CREAT` to ensure that this call
   creates the segment.  If the segment already exists, the call fails.
 
 """
 function shmget(key::Key, siz::Integer, flg::Integer)
-    id = ccall((:SWL_GetSharedMemory, libswl), Cint,
-               (Cint, Csize_t, Cuint), key, siz, flg)
-    if id < 0
-        error(syserrmsg("failed to create shared memory segment"))
-    end
+    id = ccall(:shmget, Cint, (_typeof_key_t, Csize_t, Cint),
+               key.value, siz, flg)
+    id ≥ 0 || throw(SystemError("shmget failed"))
     return ShmId(id)
 end
 
 """
 
-    shmat(id, readonly, info) -> ptr
+    shmat(id, readonly) -> ptr
 
 attaches a shared memory segment to the address space of the caller.  Argument
 `id` is he identifier of the shared memory segment.  Boolean argument
 `readonly` specifies whether to attach the segment for read-only access;
 otherwise (the default), the segment is attached for read and write access, and
-the process must have read and write permission for the segment.  Argument
-`info` is used to store information about the shared memory segment.  The
-returned value is the pointer to access the shared memory segment.
+the process must have read and write permission for the segment.  The returned
+value is the pointer to access the shared memory segment.
+
+See also: [`shmat`](@ref), [`shmdt`](@ref);
 
 """
-function shmat(id::ShmId, readonly::Bool,
-               info::ShmInfo)
-    ptr = ccall((:SWL_AttachSharedMemory, libswl), Ptr{Void},
-                (Cint, Cuint, Ptr{ShmInfo}),
-                id, (readonly ? IPC.O_RDONLY : 0), Ref(info))
-    if ptr == BAD_PTR
-        error(syserrmsg("failed to attach shared memory segment"))
+function shmat(id::ShmId, readonly::Bool)
+    shmflg = (readonly ? SHM_RDONLY : zero(SHM_RDONLY))
+    ptr = ccall(:shmat, Ptr{Void}, (Cint, Ptr{Void}, Cint),
+                id.value, C_NULL, shmflg)
+    ptr != BAD_PTR || throw(SystemError("shmat failed"))
+    return ptr
+end
+
+"""
+
+    shmat!(id, readonly, info) -> ptr
+
+attaches a shared memory segment to the address space of the caller.  Argument
+`id`, argument `readonly` and returned value are the same as for `shmat`.
+Argument `info` is used to store information about the shared memory segment.
+
+See also: [`shmat!`](@ref), [`shmdt`](@ref);
+
+"""
+function shmat!(id::ShmId, readonly::Bool, info::ShmInfo)
+    ptr = shmat(id, readonly)
+    try
+        shminfo!(id, info)
+    catch e
+        _shmdt(ptr)
+        rethrow(e)
     end
     return ptr
 end
@@ -279,12 +297,12 @@ Argument `ptr` is the pointer returned by a previous `shmat()` call.
 
 """
 function shmdt(ptr::Ptr{Void})
-    if ccall((:SWL_DetachSharedMemory, libswl), Cint,
-             (Ptr{Void},), ptr) != SUCCESS
-        error(syserrmsg("failed to detach shared memory segment"))
-    end
-    nothing
+    _shmdt(ptr) == SUCCESS || throw(SystemError("shmdt failed"))
+    return nothing
 end
+
+@inline _shmdt(ptr::Ptr{Void}) = ccall(:shmdt, Cint, (Ptr{Void},), ptr)
+
 
 """
 # Mark a shared memory segment for destruction
@@ -301,8 +319,8 @@ memory segment is returned.
 
 """
 function shmrm(id::ShmId)
-    if ccall((:SWL_DestroySharedMemory, libswl), Cint, (Cint,), id) != SUCCESS
-        warn(syserrmsg("failed to mark shared memory segment for destruction"))
+    if _shmctl(id, IPC_RMID, C_NULL) != SUCCESS
+        throw(SystemError("failed to mark shared memory segment for destruction"))
     end
     return id
 end
@@ -323,13 +341,28 @@ the shared memory segment.  In all cases, the identifier of the shared memory
 segment is returned.
 
 """
-function shmcfg(id::ShmId, perms::Integer)
-    if ccall((:SWL_ConfigureSharedMemory, libswl), Cint,
-             (Cint, Cuint), id, (perms | 0777)) != SUCCESS
-        error(syserrmsg("failed to configure shared memory segment"))
+function shmcfg(id::ShmId, perms::Cushort)
+    buf = Libc.malloc(_sizeof_struct_shmid_ds)
+    buf != C_NULL || throw(OutOfMemoryError())
+    status = _shmctl(id, IPC_STAT, buf)
+    if status == SUCCESS
+        const PERMS_MASK = Cushort(0777)
+        mode = _peek(Cushort, buf, _offsetof_shm_perm_mode)
+        if (mode & PERMS_MASK) != (perms & PERMS_MASK)
+            _poke!(Cushort, buf, _offsetof_shm_perm_mode,
+                   (mode & ~PERMS_MASK) | (perms & PERMS_MASK))
+            status = _shmctl(id, IPC_SET, buf)
+        end
+    end
+    Libc.free(buf)
+    if status != SUCCESS
+        throw(SystemError("shmctl failed"))
     end
     return id
 end
+
+shmcfg(id::ShmId, perms::Integer) =
+    shmcfg(shmid(arg), Cushort(perms))
 
 shmcfg(arg::Union{ShmArray,Key}, perms::Integer) =
     shmcfg(shmid(arg), perms)
@@ -353,10 +386,26 @@ instance of `ShmInfo`, call:
 
 """
 function shminfo!(id::ShmId, info::ShmInfo)
-    if ccall((:SWL_QuerySharedMemoryInfo, libswl), Cint,
-             (Cint, Ptr{ShmInfo}), id, Ref(info)) != SUCCESS
-        error(syserrmsg("failed to retrieve shared memory segment information"))
+    buf = Libc.malloc(_sizeof_struct_shmid_ds)
+    buf != C_NULL || throw(OutOfMemoryError())
+    status = _shmctl(id, IPC_STAT, buf)
+    if status == SUCCESS
+        info.atime  = _peek(_typeof_time_t,   buf, _offsetof_shm_atime)
+        info.dtime  = _peek(_typeof_time_t,   buf, _offsetof_shm_dtime)
+        info.ctime  = _peek(_typeof_time_t,   buf, _offsetof_shm_ctime)
+        info.segsz  = _peek(Csize_t,          buf, _offsetof_shm_segsz)
+        info.id     = id.value
+        info.cpid   = _peek(_typeof_pid_t,    buf, _offsetof_shm_cpid)
+        info.lpid   = _peek(_typeof_pid_t,    buf, _offsetof_shm_lpid)
+        info.nattch = _peek(_typeof_shmatt_t, buf, _offsetof_shm_nattch)
+        info.mode   = _peek(Cushort,          buf, _offsetof_shm_perm_mode)
+        info.uid    = _peek(_typeof_uid_t,    buf, _offsetof_shm_perm_uid)
+        info.gid    = _peek(_typeof_gid_t,    buf, _offsetof_shm_perm_gid)
+        info.cuid   = _peek(_typeof_uid_t,    buf, _offsetof_shm_perm_cuid)
+        info.cgid   = _peek(_typeof_gid_t,    buf, _offsetof_shm_perm_cgid)
     end
+    Libc.free(buf)
+    status == SUCCESS || throw(SystemError("shmctl failed"))
     return info
 end
 
@@ -367,3 +416,8 @@ shminfo!(key::Key, info::ShmInfo) = shminfo!(shmid(key, true), info)
 shminfo(arg::Union{ShmId,ShmArray,Key}) = shminfo!(arg, ShmInfo())
 
 @doc @doc(shminfo!) shminfo
+
+# Low-level call (i.e., no checking of the argumenst, nor of the returned
+# status).
+@inline _shmctl(id::ShmId, cmd, buf) =
+    ccall(:shmctl, Cint, (Cint, Cint, Ptr{Void}), id.value, cmd, buf)

@@ -1,5 +1,5 @@
 immutable Key
-    value::Cint
+    value::_typeof_key_t
 end
 
 immutable ShmId

@@ -1,5 +1,5 @@
 struct Key
-    value::Cint
+    value::_typeof_key_t
 end
 
 struct ShmId
