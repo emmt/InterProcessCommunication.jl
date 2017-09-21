@@ -16,7 +16,7 @@ mutable struct ShmArray{T,N} <: DenseArray{T,N}
         @assert pointer(buf) == ptr
         obj = new{T,N}(buf, ptr, id)
         finalizer(obj, obj -> shmdt(obj._ptr))
-            return obj
+        return obj
     end
 end
 

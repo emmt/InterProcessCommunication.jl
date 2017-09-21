@@ -77,7 +77,7 @@ int SWL_DestroySharedMemory(int id)
   return (shmctl(id, IPC_RMID, NULL) == 0 ? SWL_SUCCESS : SWL_FAILURE);
 }
 
-int SWL_QuerySharedMemoryInfo(int id, SWL_SharedMemoryInfo *info)
+int SWL_QuerySharedMemoryInfo(int id, SWL_SharedMemoryInfo* info)
 {
   struct shmid_ds ds;
 
