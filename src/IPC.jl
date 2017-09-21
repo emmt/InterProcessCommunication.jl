@@ -17,13 +17,16 @@ using Compat
 import Compat.String
 
 import Base: convert, getindex, setindex!, eltype, length, ndims, sizeof,
-             size, eachindex, linearindexing, stride, strides,
-             reinterpret, reshape, copy, copy!, show, string, pointer
+    size, eachindex, linearindexing, stride, strides,
+    reinterpret, reshape, copy, copy!, show, string, pointer,
+    lock, unlock, trylock, timedwait, broadcast
 
 export
     TimeVal,
     TimeSpec,
     gettimeofday,
+    nanosleep,
+    signal,
     ShmArray,
     shmget,
     shmid,
@@ -48,6 +51,7 @@ end
 
 include("utils.jl")
 include("shm.jl")
+include("mutex.jl")
 
 end # module IPC
 

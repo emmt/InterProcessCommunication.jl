@@ -2,10 +2,11 @@
 
 Julia has already many methods for inter-process communication (IPC): sockets,
 memory mapped files, etc.  You may however want to have Julia interacts with
-other processes by means of System V IPC shared memory, semaphores
-or message queues.  Module `IPC.jl` provides such facilities.
+other processes or threads by means of System V IPC shared memory, semaphores,
+message queues or POSIX mutexes and condition variables.  Module `IPC.jl`
+intends to such facilities.
 
-*For now only shared memory is implemented.*
+*For now only shared memory, mutexes and condition variables are implemented.*
 
 
 ## Installation

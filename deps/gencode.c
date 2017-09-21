@@ -146,7 +146,10 @@ int main(int argc, char* argv[])
   DEF_TYPEOF_TYPE(shmatt_t, "");
 
   fprintf(output, "\n# Sizes of some standard C types:\n");
-  DEF_SIZEOF_TYPE("struct_shmid_ds", struct shmid_ds);
+  DEF_SIZEOF_TYPE("struct_stat     ", struct stat);
+  DEF_SIZEOF_TYPE("struct_shmid_ds ", struct shmid_ds);
+  DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
+  DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
 
   fprintf(output, "\n# Offsets of fields in `struct shmid_ds`:\n");
   DEF_OFFSET("_offsetof_shm_perm_uid ", struct shmid_ds, shm_perm.uid);
