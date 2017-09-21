@@ -90,7 +90,7 @@ function ShmArray{T,N}(::Type{T}, dims::NTuple{N,Int};
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
     # make sure creator has at least read-write access
-    flags = Cuint(perms & 0777) | (IRUSR|IWUSR|CREAT|EXCL)
+    flags = Cuint(perms & 0777) | (S_IRUSR|S_IWUSR|O_CREAT|O_EXCL)
     id = shmget(key, siz, flags)
     arr = ShmArray(id, T, dims)
     shmrm(arr) # mark for destruction on last detach
@@ -204,7 +204,7 @@ read-write access is requested.
 shmid(id::ShmId) = id
 shmid(shm::ShmArray) = shm._id
 shmid(key::Key, readonly::Bool=false) =
-    shmget(key, 0, (rw ? IPC.IRUSR : (IPC.IRUSR|IPC.IWUSR)))
+    shmget(key, 0, (rw ? S_IRUSR : (S_IRUSR|S_IWUSR)))
 
 """
 # Get or create a shared memory segment
@@ -217,7 +217,7 @@ yields the identifier of the shared memory segment associated with the value of
 the argument `key`.  A new shared memory segment, with size equal to the value
 of `siz` (possibly rounded up to a multiple of the memory page size), is
 created if `key` has the value `IPC.PRIVATE` or `key` isn't `IPC.PRIVATE`, no
-shared memory segment corresponding to `key` exists, and `IPC.CREAT` is
+shared memory segment corresponding to `key` exists, and `IPC.O_CREAT` is
 specified in argument `flg`.
 
 Arguments are:
@@ -230,10 +230,10 @@ Arguments are:
 * `flg` specify bitwise flags.  The least significant 9 bits specify the
   permissions granted to the owner, group, and others.  These bits have the
   same format, and the same meaning, as the mode argument of `chmod`.  Bit
-  `IPC.CREAT` can be set to create a new segment.  If this flag is not used,
+  `IPC.O_CREAT` can be set to create a new segment.  If this flag is not used,
   then `shmget` will find the segment associated with `key` and
   check to see if the user has permission to access the segment.  Bit
-  `IPC.EXCL` can be set in addition to `IPC.CREAT` to ensure that this call
+  `IPC.O_EXCL` can be set in addition to `IPC.O_CREAT` to ensure that this call
   creates the segment.  If the segment already exists, the call fails.
 
 """
@@ -263,7 +263,7 @@ function shmat(id::ShmId, readonly::Bool,
                info::ShmInfo)
     ptr = ccall((:SWL_AttachSharedMemory, libswl), Ptr{Void},
                 (Cint, Cuint, Ptr{ShmInfo}),
-                id, (readonly ? IPC.RDONLY : 0), Ref(info))
+                id, (readonly ? IPC.O_RDONLY : 0), Ref(info))
     if ptr == BAD_PTR
         error(syserrmsg("failed to attach shared memory segment"))
     end

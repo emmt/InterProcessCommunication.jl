@@ -22,25 +22,10 @@ export ShmArray, shmget, shmid, shmat, shmdt, shmrm, shmcfg, shminfo, shminfo!
 
 const libswl = joinpath(@__DIR__, "..", "deps", "lib", "libswl."*Libdl.dlext)
 
-const SUCCESS = Cint( 0)
-const FAILURE = Cint(-1)
-
-const CREAT   = Cuint(0001000)
-const EXCL    = Cuint(0002000)
-const RDONLY  = Cuint(0010000)
-
-const IRWXU = Cuint(00700) # user (file owner) has read, write, and execute permission
-const IRUSR = Cuint(00400) # user has read permission
-const IWUSR = Cuint(00200) # user has write permission
-const IXUSR = Cuint(00100) # user has execute permission
-const IRWXG = Cuint(00070) # group has read, write, and execute permission
-const IRGRP = Cuint(00040) # group has read permission
-const IWGRP = Cuint(00020) # group has write permission
-const IXGRP = Cuint(00010) # group has execute permission
-const IRWXO = Cuint(00007) # others have read, write, and execute permission
-const IROTH = Cuint(00004) # others have read permission
-const IWOTH = Cuint(00002) # others have write permission
-const IXOTH = Cuint(00001) # others have execute permission
+if stat(joinpath(@__DIR__, "..", "deps", "constants.jl")).nlink == 0
+    error("File `constants.jl` does not exists.  Run `make` in the `deps` directory of the `IPC` module.")
+end
+include("../deps/constants.jl")
 
 @static if VERSION ≥ v"0.6"
     include("types.jl")
