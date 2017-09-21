@@ -1,4 +1,5 @@
 work/
+old/
 deps/constants.jl
 deps/*.o
 deps/gencode
