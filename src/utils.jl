@@ -9,7 +9,6 @@
 # Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
-const PRIVATE = Key(IPC_PRIVATE)
 
 # A bit of magic for calling C-code:
 convert(::Type{_typeof_key_t}, key::Key) = key.value
@@ -22,6 +21,13 @@ show(io::IO, key::Key) = (write(io, "IPC.Key: "*dec(key.value)); nothing)
 
 """
 
+`IPC_NEW` is a special IPC key (of type `IPC.Key`) which indicates that a new
+key should be created.
+
+"""
+const IPC_NEW = Key(IPC_PRIVATE)
+
+"""
 Immutable type `IPC.Key` stores a System V IPC key.  The call:
 
     IPC.Key(path, proj)
@@ -33,7 +39,8 @@ For instance:
 
     key = IPC.Key(".", 'a')
 
-The special IPC key `IPC.PRIVATE` is also available.
+The special IPC key [`IPC_NEW`](@ref) is also available to indicate that a new
+key should be created.
 """
 function Key(path::AbstractString, proj::Char)
     isascii(proj) || throw(ArgumentError("`proj` must belong to the ASCII character set"))

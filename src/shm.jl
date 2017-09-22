@@ -29,13 +29,13 @@ memory segment.
 
 To get an array attached to a new *volatile* shared memory segment:
 
-    ShmArray(T, dims...; key=IPC.PRIVATE, perms=...)
+    ShmArray(T, dims...; key=IPC_NEW, perms=...)
 
 where `T` and `dims` are the element type and the dimensions of the array.  The
 shared memory segment is *volatile* in the sense that it will be automatically
 destroyed when no more processes are attached to it.  Keyword `key` may be used
-to specify an IPC key other than the default `IPC.PRIVATE`.  If `key` is not
-`IPC.PRIVATE`, the method will fail if an IPC identifer already exists with
+to specify an IPC key other than the default `IPC_NEW`.  If `key` is not
+`IPC_NEW`, the method will fail if an IPC identifer already exists with
 that key.  Keyword `perms` can be used to specify the access permissions for
 the created shared memory segment, at least read-write access to the caller
 will be granted.
@@ -59,7 +59,7 @@ caller must have sufficient permissions.
 
 Finally:
 
-    ShmArray(arr; key=IPC.PRIVATE, perms=...)
+    ShmArray(arr; key=IPC_NEW, perms=...)
 
 yields a new shared memory array whose type, dimensions and contents are copied
 from `arr`.
@@ -86,7 +86,7 @@ The handle can also be reinterpreted or reshaped:
 
 """
 function ShmArray{T,N}(::Type{T}, dims::NTuple{N,Int};
-                       key::Key=IPC.PRIVATE, perms::Integer=0)
+                       key::Key=IPC_NEW, perms::Integer=0)
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
     # make sure creator has at least read-write access
@@ -216,9 +216,9 @@ The call:
 yields the identifier of the shared memory segment associated with the value of
 the argument `key`.  A new shared memory segment, with size equal to the value
 of `siz` (possibly rounded up to a multiple of the memory page size), is
-created if `key` has the value `IPC.PRIVATE` or `key` isn't `IPC.PRIVATE`, no
-shared memory segment corresponding to `key` exists, and `IPC_CREAT` is
-specified in argument `flg`.
+created if `key` has the value `IPC_NEW` or `key` isn't `IPC_NEW`, no shared
+memory segment corresponding to `key` exists, and `IPC_CREAT` is specified in
+argument `flg`.
 
 Arguments are:
 

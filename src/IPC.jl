@@ -27,6 +27,7 @@ export
     gettimeofday,
     nanosleep,
     signal,
+    IPC_NEW,
     ShmArray,
     shmget,
     shmid,
