@@ -90,7 +90,7 @@ function ShmArray{T,N}(::Type{T}, dims::NTuple{N,Int};
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
     # make sure creator has at least read-write access
-    flags = Cuint(perms & 0777) | (S_IRUSR|S_IWUSR|O_CREAT|O_EXCL)
+    flags = Cint(perms & (S_IRWXU|S_IRWXG|S_IRWXO)) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
     id = shmget(key, siz, flags)
     arr = ShmArray(id, T, dims)
     shmrm(arr) # mark for destruction on last detach
@@ -204,7 +204,7 @@ read-write access is requested.
 shmid(id::ShmId) = id
 shmid(shm::ShmArray) = shm._id
 shmid(key::Key, readonly::Bool=false) =
-    shmget(key, 0, (rw ? S_IRUSR : (S_IRUSR|S_IWUSR)))
+    shmget(key, 0, (readonly ? S_IRUSR : (S_IRUSR|S_IWUSR)))
 
 """
 # Get or create a shared memory segment
