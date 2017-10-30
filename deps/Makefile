@@ -3,7 +3,7 @@ CFLAGS = -O -Wall
 CPPFLAGS =
 LDFLAGS =
 
-all: constants.jl
+all: ../src/constants.jl
 
 clean:
 	rm -f *~ core gencode
@@ -11,7 +11,7 @@ clean:
 gencode: gencode.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o "$@" "$<" $(LDFLAGS)
 
-constants.jl: constants-header.jl gencode
+../src/constants.jl: constants-header.jl gencode
 	rm -f "$@"
 	cat constants-header.jl >"$@"
 	./gencode >>"$@"

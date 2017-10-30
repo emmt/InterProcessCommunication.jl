@@ -39,10 +39,10 @@ export
     shminfo,
     shminfo!
 
-if stat(joinpath(@__DIR__, "..", "deps", "constants.jl")).nlink == 0
+if stat(joinpath(@__DIR__, "constants.jl")).nlink == 0
     error("File `constants.jl` does not exists.  Run `make` in the `deps` directory of the `IPC` module.")
 end
-include("../deps/constants.jl")
+include("constants.jl")
 
 @static if VERSION ≥ v"0.6"
     include("types.jl")
