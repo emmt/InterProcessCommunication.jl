@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/ipc.h>
+#include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -17,7 +18,7 @@
 #define OFFSET_OF(type, field) ((char*)&((type*)0)->field - (char*)0)
 
 /* Determine whether an integer type is signed. */
-#define IS_SIGNED(type)        ((type)(~(type)0) < (type)0)
+#define IS_SIGNED(type)        (~(type)0 < (type)0)
 
 /* Set all the bits of an L-value. */
 #define SET_ALL_BITS(lval) lval = 0; lval = ~lval
@@ -51,8 +52,9 @@
 
 /* Define a Julia constant with the offset (in bytes) of a field of a
  * C-structure. */
-#define DEF_OFFSET(ident, type, field)                                  \
-  fprintf(output, "const " ident " = %3ld\n", (long)OFFSET_OF(type, field))
+#define DEF_OFFSETOF(ident, type, field)                \
+  fprintf(output, "const _offsetof_" ident " = %3ld\n", \
+          (long)OFFSET_OF(type, field))
 
 /* Define a Julia constant with the size of a given C-type. */
 #define DEF_SIZEOF_TYPE(name, type)             \
@@ -81,25 +83,26 @@ int main(int argc, char* argv[])
   }
 
   fprintf(output, "\n# Bits for creating/opening a file:\n");
-  DEF_CONST(O_RDONLY, " = Cint(%06o)");
-  DEF_CONST(O_RDWR, "   = Cint(%06o)");
-  DEF_CONST(O_CREAT, "  = Cint(%06o)");
-  DEF_CONST(O_EXCL, "   = Cint(%06o)");
-  DEF_CONST(O_TRUNC, "  = Cint(%06o)");
+  DEF_CONST(O_RDONLY, " = Cint(0o%04o)");
+  DEF_CONST(O_WRONLY, " = Cint(0o%04o)");
+  DEF_CONST(O_RDWR, "   = Cint(0o%04o)");
+  DEF_CONST(O_CREAT, "  = Cint(0o%04o)");
+  DEF_CONST(O_EXCL, "   = Cint(0o%04o)");
+  DEF_CONST(O_TRUNC, "  = Cint(0o%04o)");
 
   fprintf(output, "\n# Bits for file permissions:\n");
-  DEF_CONST(S_IRWXU, " = Cint(%06o); # user has read, write, and execute permission");
-  DEF_CONST(S_IRUSR, " = Cint(%06o); # user has read permission");
-  DEF_CONST(S_IWUSR, " = Cint(%06o); # user has write permission");
-  DEF_CONST(S_IXUSR, " = Cint(%06o); # user has execute permission");
-  DEF_CONST(S_IRWXG, " = Cint(%06o); # group has read, write, and execute permission");
-  DEF_CONST(S_IRGRP, " = Cint(%06o); # group has read permission");
-  DEF_CONST(S_IWGRP, " = Cint(%06o); # group has write permission");
-  DEF_CONST(S_IXGRP, " = Cint(%06o); # group has execute permission");
-  DEF_CONST(S_IRWXO, " = Cint(%06o); # others have read, write, and execute permission");
-  DEF_CONST(S_IROTH, " = Cint(%06o); # others have read permission");
-  DEF_CONST(S_IWOTH, " = Cint(%06o); # others have write permission");
-  DEF_CONST(S_IXOTH, " = Cint(%06o); # others have execute permission");
+  DEF_CONST(S_IRWXU, " = Cint(0o%04o) # user has read, write, and execute permission");
+  DEF_CONST(S_IRUSR, " = Cint(0o%04o) # user has read permission");
+  DEF_CONST(S_IWUSR, " = Cint(0o%04o) # user has write permission");
+  DEF_CONST(S_IXUSR, " = Cint(0o%04o) # user has execute permission");
+  DEF_CONST(S_IRWXG, " = Cint(0o%04o) # group has read, write, and execute permission");
+  DEF_CONST(S_IRGRP, " = Cint(0o%04o) # group has read permission");
+  DEF_CONST(S_IWGRP, " = Cint(0o%04o) # group has write permission");
+  DEF_CONST(S_IXGRP, " = Cint(0o%04o) # group has execute permission");
+  DEF_CONST(S_IRWXO, " = Cint(0o%04o) # others have read, write, and execute permission");
+  DEF_CONST(S_IROTH, " = Cint(0o%04o) # others have read permission");
+  DEF_CONST(S_IWOTH, " = Cint(0o%04o) # others have write permission");
+  DEF_CONST(S_IXOTH, " = Cint(0o%04o) # others have execute permission");
 
   fprintf(output, "\n# Commands for `shmctl`, `semctl` and `msgctl`:\n");
   DEF_CONST(IPC_STAT, " = Cint(%d)");
@@ -107,8 +110,8 @@ int main(int argc, char* argv[])
   DEF_CONST(IPC_RMID, " = Cint(%d)");
 
   fprintf(output, "\n# Bits for `shmget`:\n");
-  DEF_CONST(IPC_CREAT, " = Cint(%06o)");
-  DEF_CONST(IPC_EXCL, "  = Cint(%06o)");
+  DEF_CONST(IPC_CREAT, " = Cint(0o%04o)");
+  DEF_CONST(IPC_EXCL, "  = Cint(0o%04o)");
 
   fprintf(output, "\n# Flags for `shmdt`:\n");
   DEF_CONST(SHM_EXEC, "   = Cint(%d)");
@@ -138,6 +141,7 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("tv_usec ", tv.tv_usec);
     DEF_TYPEOF_LVALUE("tv_nsec ", ts.tv_nsec);
   }
+  DEF_TYPEOF_TYPE(mode_t, "  ");
   DEF_TYPEOF_TYPE(pid_t, "   ");
   DEF_TYPEOF_TYPE(uid_t, "   ");
   DEF_TYPEOF_TYPE(gid_t, "   ");
@@ -147,26 +151,75 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Sizes of some standard C types:\n");
   DEF_SIZEOF_TYPE("struct_stat     ", struct stat);
-  DEF_SIZEOF_TYPE("struct_shmid_ds ", struct shmid_ds);
+  DEF_SIZEOF_TYPE("struct_semid_ds ", struct semid_ds);
   DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
   DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
 
   fprintf(output, "\n# Offsets of fields in `struct shmid_ds`:\n");
-  DEF_OFFSET("_offsetof_shm_perm_uid ", struct shmid_ds, shm_perm.uid);
-  DEF_OFFSET("_offsetof_shm_perm_gid ", struct shmid_ds, shm_perm.gid);
-  DEF_OFFSET("_offsetof_shm_perm_cuid", struct shmid_ds, shm_perm.cuid);
-  DEF_OFFSET("_offsetof_shm_perm_cgid", struct shmid_ds, shm_perm.cgid);
-  DEF_OFFSET("_offsetof_shm_perm_mode", struct shmid_ds, shm_perm.mode);
-  DEF_OFFSET("_offsetof_shm_segsz    ", struct shmid_ds, shm_segsz);
-  DEF_OFFSET("_offsetof_shm_atime    ", struct shmid_ds, shm_atime);
-  DEF_OFFSET("_offsetof_shm_dtime    ", struct shmid_ds, shm_dtime);
-  DEF_OFFSET("_offsetof_shm_ctime    ", struct shmid_ds, shm_ctime);
-  DEF_OFFSET("_offsetof_shm_cpid     ", struct shmid_ds, shm_cpid);
-  DEF_OFFSET("_offsetof_shm_lpid     ", struct shmid_ds, shm_lpid);
-  DEF_OFFSET("_offsetof_shm_nattch   ", struct shmid_ds, shm_nattch);
+  DEF_OFFSETOF("shm_perm_uid ", struct shmid_ds, shm_perm.uid);
+  DEF_OFFSETOF("shm_perm_gid ", struct shmid_ds, shm_perm.gid);
+  DEF_OFFSETOF("shm_perm_cuid", struct shmid_ds, shm_perm.cuid);
+  DEF_OFFSETOF("shm_perm_cgid", struct shmid_ds, shm_perm.cgid);
+  DEF_OFFSETOF("shm_perm_mode", struct shmid_ds, shm_perm.mode);
+  DEF_OFFSETOF("shm_segsz    ", struct shmid_ds, shm_segsz);
+  DEF_OFFSETOF("shm_atime    ", struct shmid_ds, shm_atime);
+  DEF_OFFSETOF("shm_dtime    ", struct shmid_ds, shm_dtime);
+  DEF_OFFSETOF("shm_ctime    ", struct shmid_ds, shm_ctime);
+  DEF_OFFSETOF("shm_cpid     ", struct shmid_ds, shm_cpid);
+  DEF_OFFSETOF("shm_lpid     ", struct shmid_ds, shm_lpid);
+  DEF_OFFSETOF("shm_nattch   ", struct shmid_ds, shm_nattch);
 
   fprintf(output, "\n# Special IPC key:\n");
   DEF_CONST(IPC_PRIVATE, " = _typeof_key_t(%d)");
+
+  fprintf(output, "\n# Flags for `semctl`:\n");
+  DEF_CONST(GETALL, "  = Cint(%d)");
+  DEF_CONST(GETNCNT, " = Cint(%d)");
+  DEF_CONST(GETPID, "  = Cint(%d)");
+  DEF_CONST(GETVAL, "  = Cint(%d)");
+  DEF_CONST(GETZCNT, " = Cint(%d)");
+  DEF_CONST(SETALL, "  = Cint(%d)");
+  DEF_CONST(SETVAL, "  = Cint(%d)");
+
+  fprintf(output, "\n# Flags for `semop`:\n");
+  DEF_CONST(IPC_NOWAIT, " = Cshort(%d)");
+  DEF_CONST(SEM_UNDO, "   = Cshort(%d)");
+
+  fprintf(output, "\n# Constants for `struct sembuf`:\n");
+  {
+    struct sembuf sb;
+    DEF_SIZEOF_TYPE("struct_sembuf", struct sembuf);
+    DEF_OFFSETOF("sem_num    ", struct sembuf, sem_num);
+    DEF_OFFSETOF("sem_op     ", struct sembuf, sem_op);
+    DEF_OFFSETOF("sem_flg    ", struct sembuf, sem_flg);
+    DEF_TYPEOF_LVALUE("sem_num      ", sb.sem_num);
+    DEF_TYPEOF_LVALUE("sem_op       ", sb.sem_op);
+    DEF_TYPEOF_LVALUE("sem_flg      ", sb.sem_flg);
+  }
+
+#if 0
+  fprintf(output, "\n# Constants for `union semnum`:\n");
+  {
+    union semnum {
+      int val;
+      void* ptr;
+    } sn;
+    DEF_SIZEOF_TYPE("union_semnum", union semnum);
+    DEF_OFFSETOF("semnum_val", union semnum, val);
+    DEF_OFFSETOF("semnum_ptr", union semnum, ptr);
+  }
+
+  fprintf(output, "\n# Semaphore limits:\n");
+  DEF_CONST(SEMMNI, "= %-6d # max. number of semaphore sets");
+  DEF_CONST(SEMMSL, "= %-6d # max. number of semaphores per semaphore set");
+  DEF_CONST(SEMMNS, "= %-6d # max. number of semaphores");
+#endif
+
+  fprintf(output, "\n# Constants for POSIX semaphores:\n");
+  DEF_CONST(SEM_FAILED, "    = Cint(%p)");
+#ifdef SEM_VALUE_MAX
+  DEF_CONST(SEM_VALUE_MAX, " = Cint(%d)");
+#endif
 
   return 0;
 }
