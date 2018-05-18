@@ -117,8 +117,8 @@ function ShmArray(id::ShmId, T::DataType=UInt8;
     @assert isbits(T)
     ptr = shmat!(id, readonly, info)
     len = div(info.segsz/sizeof(T))
-    buf = unsafe_wrap(Array, Ptr{T}(ptr), len, false)
-    return ShmArray{T,N}(buf, ptr, id)
+    arr = unsafe_wrap(Array, Ptr{T}(ptr), len, false)
+    return ShmArray{T,N}(arr, ptr, id)
 end
 
 ShmArray(key::Key, T::DataType=UInt8; readonly::Bool=false, kwds...) =
@@ -133,8 +133,8 @@ function ShmArray(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
         _shmdt(ptr)
         error("shared memory segment is too small")
     end
-    buf = unsafe_wrap(Array, Ptr{T}(ptr), dims, false)
-    return ShmArray{T,N}(buf, ptr, id)
+    arr = unsafe_wrap(Array, Ptr{T}(ptr), dims, false)
+    return ShmArray{T,N}(arr, ptr, id)
 end
 
 function ShmArray(key::Key, ::Type{T}, dims::NTuple{N,Int};
@@ -150,51 +150,53 @@ end
 ShmArray(arr::AbstractArray{T,N}; kwds...) where {T,N} =
     copy!(ShmArray(T, size(arr); kwds...), arr)
 
+_destroy(obj::ShmArray) = shmdt(obj.ptr)
+
 Base.convert(::Type{ShmArray{T,N}}, arr::AbstractArray{T,N}) where {T,N} =
     ShmArray(arr)
 
 Base.convert(::Type{ShmArray{T,N}}, arr::ShmArray{T,N}) where {T,N} = arr
 
-Base.getindex(shm::ShmArray, i1) = getindex(shm._buf, i1)
+Base.getindex(shm::ShmArray, i1) = getindex(shm.arr, i1)
 
-Base.getindex(shm::ShmArray, i1, i2...) = getindex(shm._buf, i1, i2...)
+Base.getindex(shm::ShmArray, i1, i2...) = getindex(shm.arr, i1, i2...)
 
-Base.setindex!(shm::ShmArray, value, i1) = setindex!(shm._buf, value, i1)
+Base.setindex!(shm::ShmArray, value, i1) = setindex!(shm.arr, value, i1)
 
 Base.setindex!(shm::ShmArray, value, i1, i2...) =
-    setindex!(shm._buf, value, i1, i2...)
+    setindex!(shm.arr, value, i1, i2...)
 
 Base.eltype(shm::ShmArray{T,N}) where {T,N} = T
 
-Base.length(shm::ShmArray) = length(shm._buf)
+Base.length(shm::ShmArray) = length(shm.arr)
 
 Base.ndims(shm::ShmArray{T,N}) where {T,N} = N
 
-Base.sizeof(shm::ShmArray) = sizeof(shm._buf)
+Base.sizeof(shm::ShmArray) = sizeof(shm.arr)
 
-Base.size(shm::ShmArray) = size(shm._buf)
+Base.size(shm::ShmArray) = size(shm.arr)
 
-Base.size(shm::ShmArray, i::Number) = size(shm._buf, i)
+Base.size(shm::ShmArray, i::Number) = size(shm.arr, i)
 
-Base.eachindex(shm::ShmArray) = eachindex(shm._buf)
+Base.eachindex(shm::ShmArray) = eachindex(shm.arr)
 
 Base.IndexStyle(::Type{<:ShmArray}) = Base.IndexLinear()
 
-Base.stride(shm::ShmArray, i::Integer) = stride(shm._buf, i)
+Base.stride(shm::ShmArray, i::Integer) = stride(shm.arr, i)
 
-Base.strides(shm::ShmArray) = strides(shm._buf)
+Base.strides(shm::ShmArray) = strides(shm.arr)
 
-Base.copy(shm::ShmArray) = copy(shm._buf)
+Base.copy(shm::ShmArray) = copy(shm.arr)
 
-Base.copy!(dest::ShmArray, src::AbstractArray) = (copy!(dest._buf, src); dest)
+Base.copy!(dest::ShmArray, src::AbstractArray) = (copy!(dest.arr, src); dest)
 
-Base.pointer(shm::ShmArray) = pointer(shm._buf)
+Base.pointer(shm::ShmArray) = pointer(shm.arr)
 
 Base.reinterpret(::Type{T}, shm::ShmArray) where {T} =
-    reinterpret(T, shm._buf)
+    reinterpret(T, shm.arr)
 
 Base.reshape(shm::ShmArray, dims::Tuple{Vararg{Int}}) =
-    reshape(shm._buf, dims)
+    reshape(shm.arr, dims)
 
 """
 # Get the identifier of an existing shared memory segment
@@ -203,20 +205,20 @@ The following calls:
 
 ```julia
 shmid(id)                  -> id
-shmid(shm)                 -> id
+shmid(shmarr)              -> id
 shmid(key, readlony=false) -> id
 ```
 
 yield the the identifier of the existing shared memory segment associated with
 the value of the first argument.  `id` is the identifier of the shared memory
-segment, `shm` is a shared array attached to the shared memory segment and
+segment, `shmarr` is a shared array attached to the shared memory segment and
 `key` is the key associated with the shared memory segment.  In that latter
 case, `readlony` can be set `true` to only request read-only access; otherwise
 read-write access is requested.
 
 """
 shmid(id::ShmId) = id
-shmid(shm::ShmArray) = shm._id
+shmid(shmarr::ShmArray) = shmarr.id
 shmid(key::Key, readonly::Bool=false) =
     shmget(key, 0, (readonly ? S_IRUSR : (S_IRUSR|S_IWUSR)))
 

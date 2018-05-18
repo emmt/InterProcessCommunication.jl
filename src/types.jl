@@ -29,14 +29,14 @@ end
 
 mutable struct ShmArray{T,N} <: DenseArray{T,N}
     # All members shall be considered as private.
-    _buf::Array{T,N}
-    _ptr::Ptr{Void}
-    _id::ShmId
-    function ShmArray{T,N}(buf::Array{T,N}, ptr::Ptr{Void},
+    arr::Array{T,N} # wrapped Julia array
+    ptr::Ptr{Void}  # address where shared memory is attached
+    id::ShmId       # shared memory identifier
+    function ShmArray{T,N}(arr::Array{T,N}, ptr::Ptr{Void},
                            id::ShmId) where {T,N}
-        @assert pointer(buf) == ptr
-        obj = new{T,N}(buf, ptr, id)
-        finalizer(obj, obj -> shmdt(obj._ptr))
+        @assert pointer(arr) == ptr
+        obj = new{T,N}(arr, ptr, id)
+        finalizer(obj, _destroy)
         return obj
     end
 end
