@@ -47,8 +47,11 @@ key = IPC.Key(".", 'a')
 The special IPC key [`IPC_NEW`](@ref) is also available to indicate that a new
 key should be created.
 """
-function Key(path::AbstractString, proj::Char)
-    isascii(proj) || throw(ArgumentError("`proj` must be an ASCII character"))
+Key(path::AbstractString, proj::Union{Char,Integer}) =
+    Key(path, convert(Cint, proj))
+
+function Key(path::AbstractString, proj::Cint)
+    1 ≤ proj ≤ 255 || throw(ArgumentError("`proj` must be in the range 1:255"))
     key = ccall(:ftok, _typeof_key_t, (Cstring, Cint), path, proj)
     systemerror("ftok", key == -1)
     return Key(key)
