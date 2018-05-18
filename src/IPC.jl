@@ -23,6 +23,8 @@ export
     signal,
     IPC_NEW,
     ShmArray,
+    ShmMatrix,
+    ShmVector,
     shmget,
     shmid,
     shmat,

@@ -40,6 +40,9 @@ mutable struct ShmArray{T,N} <: DenseArray{T,N}
     end
 end
 
+const ShmVector{T} = ShmArray{T,1}
+const ShmMatrix{T} = ShmArray{T,2}
+
 mutable struct ShmInfo
     atime::UInt64 # last attach time
     dtime::UInt64 # last detach time
