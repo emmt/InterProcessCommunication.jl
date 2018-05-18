@@ -165,6 +165,7 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Sizes of some standard C types:\n");
   DEF_SIZEOF_TYPE("struct_stat     ", struct stat);
+  DEF_SIZEOF_TYPE("struct_shmid_ds ", struct shmid_ds);
   DEF_SIZEOF_TYPE("struct_semid_ds ", struct semid_ds);
   DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
   DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
