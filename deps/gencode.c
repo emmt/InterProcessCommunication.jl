@@ -1,3 +1,14 @@
+/*
+ * gencode.c --
+ *
+ * Generate constants definitions for Julia.
+ *
+ *------------------------------------------------------------------------------
+ *
+ * This file is part of IPC.jl released under the MIT "expat" license.
+ * Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+ */
+
 #include <fcntl.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -216,12 +227,12 @@ int main(int argc, char* argv[])
   DEF_CONST(SEMMNI, "= %-6d # max. number of semaphore sets");
   DEF_CONST(SEMMSL, "= %-6d # max. number of semaphores per semaphore set");
   DEF_CONST(SEMMNS, "= %-6d # max. number of semaphores");
-#endif
 
   fprintf(output, "\n# Constants for POSIX semaphores:\n");
   DEF_CONST(SEM_FAILED, "    = Cint(%p)");
 #ifdef SEM_VALUE_MAX
   DEF_CONST(SEM_VALUE_MAX, " = Cint(%d)");
+#endif
 #endif
 
   return 0;
