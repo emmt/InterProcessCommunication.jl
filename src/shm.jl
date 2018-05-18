@@ -30,7 +30,7 @@ memory segment.
 To get an array attached to a new *volatile* shared memory segment:
 
 ```julia
-ShmArray(T, dims...; key=IPC.PRIVATE, perms=...)
+ShmArray(T, dims...; key=IPC.PRIVATE, perms=..., info=..., offset=...)
 ```
 
 where `T` and `dims` are the element type and the dimensions of the array.  The
@@ -98,43 +98,68 @@ reshape(shm, dims)
 
 """
 function ShmArray(::Type{T}, dims::NTuple{N,Int};
-                  key::Key=PRIVATE, perms::Integer=0) where {T,N}
-    @assert isbits(T)
-    siz = sizeof(T)*prod(dims)
+                  key::Key=PRIVATE, perms::Integer=0,
+                  offset::Integer=0, persistent::Bool=false,
+                  info::ShmInfo=ShmInfo()) :: ShmArray{T,N} where {T,N}
+    _checktypeoffset(T, offset)
+    siz = sizeof(T)*prod(dims) + offset
     # make sure creator has at least read-write access
-    flags = Cint(perms & (S_IRWXU|S_IRWXG|S_IRWXO)) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
+    flags = (Cint(perms & (S_IRWXU|S_IRWXG|S_IRWXO)) |
+             (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL))
     id = shmget(key, siz, flags)
-    arr = ShmArray(id, T, dims)
-    shmrm(arr) # mark for destruction on last detach
+    arr = _attachsharedarray(id, T, dims, offset, false, info)
+    persistent || shmrm(arr) # mark for destruction on last detach
     return arr
 end
 
-ShmArray(::Type{T}, dims::Integer...; kwds...) where {T} =
+ShmArray(T::DataType, dims::Integer...; kwds...) =
     ShmArray(T, makedims(dims); kwds...)
 
-function ShmArray(id::ShmId, T::DataType=UInt8;
-                  readonly::Bool=false, info::ShmInfo=ShmInfo())
-    @assert isbits(T)
+function ShmArray(id::ShmId, ::Type{T}=UInt8;
+                  readonly::Bool=false, info::ShmInfo=ShmInfo(),
+                  offset::Integer=0) :: ShmArray{T,1} where {T}
+     _checktypeoffset(T, offset)
     ptr = shmat!(id, readonly, info)
-    len = div(info.segsz/sizeof(T))
-    arr = unsafe_wrap(Array, Ptr{T}(ptr), len, false)
-    return ShmArray{T,N}(arr, ptr, id)
+    segsz = info.segsz
+    offset ≤ segsz ||
+        throw(ArgumentError("offset must be smaller or equal $segsz"))
+    len = div(segsz - offset, sizeof(T))
+    arr = unsafe_wrap(Array, Ptr{T}(ptr + offset), len, false)
+    return ShmArray{T,1}(arr, ptr, id)
 end
 
 ShmArray(key::Key, T::DataType=UInt8; readonly::Bool=false, kwds...) =
     ShmArray(shmid(key, readonly), T; readonly=readonly, kwds...)
 
 function ShmArray(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
-                  readonly::Bool=false, info::ShmInfo=ShmInfo()) where {T,N}
-    @assert isbits(T)
-    siz = sizeof(T)*prod(dims)
+                  readonly::Bool=false, info::ShmInfo=ShmInfo(),
+                  offset::Integer=0) :: ShmArray{T,N} where {T,N}
+    _checktypeoffset(T, offset)
+    return _attachsharedarray(id, T, dims, offset, readonly, info)
+end
+
+function _attachsharedarray(id::ShmId, ::Type{T}, dims::NTuple{N,Int},
+                            offset::Integer, readonly::Bool,
+                            info::ShmInfo) where {T,N}
+    siz = sizeof(T)*prod(dims) + offset
     ptr = shmat!(id, readonly, info)
     if info.segsz < siz
         _shmdt(ptr)
         error("shared memory segment is too small")
     end
-    arr = unsafe_wrap(Array, Ptr{T}(ptr), dims, false)
+    arr = unsafe_wrap(Array, Ptr{T}(ptr + offset), dims, false)
     return ShmArray{T,N}(arr, ptr, id)
+end
+
+function _checktypeoffset(T::DataType, offset::Integer)
+    isbits(T) || throw(ArgumentError("illegal element type ($T)"))
+    if offset > 0
+        n = Base.datatype_alignment(T)
+        rem(offset, n) == 0 ||
+            throw(ArgumentError("offset must be a multiple of $n bytes"))
+    elseif offset < 0
+        throw(ArgumentError("offset must be nonnegative"))
+    end
 end
 
 function ShmArray(key::Key, ::Type{T}, dims::NTuple{N,Int};

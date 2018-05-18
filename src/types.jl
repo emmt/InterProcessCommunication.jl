@@ -34,7 +34,6 @@ mutable struct ShmArray{T,N} <: DenseArray{T,N}
     id::ShmId       # shared memory identifier
     function ShmArray{T,N}(arr::Array{T,N}, ptr::Ptr{Void},
                            id::ShmId) where {T,N}
-        @assert pointer(arr) == ptr
         obj = new{T,N}(arr, ptr, id)
         finalizer(obj, _destroy)
         return obj
