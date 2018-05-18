@@ -25,6 +25,7 @@ export
     ShmArray,
     ShmMatrix,
     ShmVector,
+    shmarr,
     shmget,
     shmid,
     shmat,

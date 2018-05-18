@@ -513,3 +513,140 @@ shminfo(arg::Union{ShmId,ShmArray,Key}) = shminfo!(arg, ShmInfo())
 # status).
 @inline _shmctl(id::ShmId, cmd, buf) =
     ccall(:shmctl, Cint, (Cint, Cint, Ptr{Void}), id.value, cmd, buf)
+
+#------------------------------------------------------------------------------
+# SHARED ARRAYS WITH HEADER
+
+const SHMARR_MAGIC = UInt32(0x4D417631) # "MAv1" = Memory Array version 1
+const SHMARR_ALIGN = max(sizeof(Int), 64) # require atl least 512 bits alignment
+
+const SHMARR_TYPES = (( 1, Int8,       "signed 8-bit integer"),
+               ( 2, UInt8,      "unsigned 8-bit integer"),
+               ( 3, Int16,      "signed 16-bit integer"),
+               ( 4, UInt16,     "unsigned 16-bit integer"),
+               ( 5, Int32,      "signed 32-bit integer"),
+               ( 6, UInt32,     "unsigned 32-bit integer"),
+               ( 7, Int64,      "signed 64-bit integer"),
+               ( 8, UInt64,     "unsigned 64-bit integer"),
+               ( 9, Float32,    "32-bit floating-point"),
+               (10, Float64,    "64-bit floating-point"),
+               (11, Complex64,  "64-bit complex"),
+               (12, Complex128, "128-bit complex"))
+
+const SHMARR_ETYPES = DataType[T for (i, T, str) in SHMARR_TYPES]
+const SHMARR_ESIZES = Int[sizeof(T) for (i, T, str) in SHMARR_TYPES]
+const SHMARR_DESCRS = String[str for (i, T, str) in SHMARR_TYPES]
+const SHMARR_IDENTS = Dict(T => i for (i, T, str) in SHMARR_TYPES)
+
+#
+# header is:
+#   magic  4-bytes
+#   etype  2-bytes
+#   ndims  2-bytes
+#   pad    (to have remaining fields aligned)
+#   offset sizeof(Int)
+#   dim1   sizeof(Int)
+#   dim2   sizeof(Int)
+#   ...
+# minimal size if
+
+struct ShmArrHeader
+    magic::UInt32 # magic number to check correctness
+    etype::UInt16 # identifier of element type
+    ndims::UInt16 # number of dimensions
+    offset::Int   # size of header
+end
+
+"""
+```julia
+shmarr(T, dims)
+```
+
+yields a new array with elements of type `T` and dimensions `dims` and whose
+contents is stored in shared memory.  Keywords like `perms`, `key`,
+`persistent` and `info` can be specified (see [`ShmArray`](@ref)).
+
+Compared to directly call `ShmArray`, this method also write a descriptor of
+the array (element type and dimensions) in shared memory so that it is easier
+to retrieve the array for another process by calling:
+
+```julia
+shmarr(id; readonly=false)
+```
+
+which yields a Julia array whose contents has been stored in shared memory by a
+call to `shmarr` as above.  Here `id` is the shared memory identifier (provided
+by `shmid`) of the same IPC key as the one used to create the shared memory
+array.  Beware that, for this mechanim to work, `id` must correspond to an
+array created with `shmarr` (not directly with `ShmArray`).
+
+See also: [`shmid`](@ref), [`IPC.Key`](@ref), [`ShmArray`](@ref).
+
+"""
+function shmarr(::Type{T}, dims::NTuple{N,Int};
+                kwds...) :: ShmArray{T,N} where {T,N}
+    # Check inputs.
+    haskey(SHMARR_IDENTS, T) ||
+        throw(ArgumentError("unsupported data type ($T)"))
+    ident = SHMARR_IDENTS[T]
+
+    # Compute offset to store header and create array.
+    offset = div(sizeof(ShmArrHeader) + N*sizeof(Int) + SHMARR_ALIGN - 1,
+                 SHMARR_ALIGN)*SHMARR_ALIGN
+    arr = ShmArray(T, dims; kwds..., offset=offset)
+
+    # Retrieve address of shared memory segment.
+    ptr = arr.ptr
+    @assert pointer(arr.arr) == ptr + offset
+
+    # Write header and dimensions.
+    hdr = ShmArrHeader(SHMARR_MAGIC, ident, N, offset)
+    unsafe_store!(Ptr{ShmArrHeader}(ptr), hdr)
+    addr = Ptr{Int}(ptr + sizeof(ShmArrHeader))
+    for i in 1:N
+        unsafe_store!(addr, dims[i], i)
+    end
+
+    # Return shared array.
+    return arr
+end
+
+shmarr(::Type{T}, dims::Integer...; kwds...) where {T} =
+    shmarr(T, makedims(dims); kwds...)
+
+shmarr(::Type{T}, dims::NTuple{N,Integer}; kwds...) where {T,N} =
+    shmarr(T, makedims(dims); kwds...)
+
+shmarr(key::Key; readonly::Bool=false) =
+    shmarr(shmid(key, readonly); readonly=readonly)
+
+function shmarr(id::ShmId; readonly::Bool=false)
+    const NTYPES = length(SHMARR_ETYPES)
+    info = shminfo(id)
+    segsz = info.segsz
+    segsz ≥ sizeof(ShmArrHeader) ||
+        error("too small shared memory segment ($(Int(segsz)) bytes)")
+    ptr = shmat(id, readonly)
+    try
+        hdr = _peek(ShmArrHeader, ptr)
+        hdr.magic == SHMARR_MAGIC ||
+            error("invalid magic number (0x$(hex(hdr.magic)))")
+        etype = Int(hdr.etype)
+        1 ≤ etype ≤ NTYPES || error("invalid element type identifier ($etype)")
+        ndims = Int(hdr.ndims)
+        1 ≤ ndims || error("invalid number of dimensions ($ndims)")
+        offset = Int(hdr.offset)
+        offset ≥ sizeof(ShmArrHeader) + ndims*sizeof(Int) ||
+            error("too small offset ($offset)")
+        addr = Ptr{Int}(ptr + sizeof(ShmArrHeader))
+        dims = ntuple(i -> unsafe_load(addr, i), ndims)
+        number = checkdims(dims)
+        T = SHMARR_ETYPES[etype]
+        segsz ≥ sizeof(T)*number + offset ||
+            error("too small shared memory segment ($(Int(segsz)) bytes)")
+        return _buildsharedarray(id, ptr, offset, T, dims)
+    catch ex
+        _shmdt(ptr)
+        rethrow(ex)
+    end
+end
