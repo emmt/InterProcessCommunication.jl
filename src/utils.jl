@@ -9,16 +9,20 @@
 # Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
-
 # A bit of magic for calling C-code:
 Base.convert(::Type{_typeof_key_t}, key::Key) = key.value
-Base.convert(::Type{T}, ipckey::Key) where {T<:Integer} =
-    convert(T, ipckey.value)
-Base.convert(::Type{String}, key::Key) = string(key)
+Base.convert(::Type{T}, key::Key) where {T<:Integer} = convert(T, key.value)
+Base.convert(::Type{Cint}, id::ShmId) = id.value
+Base.convert(::Type{T}, id::ShmId) where {T<:Integer} = convert(T, id.value)
 
-Base.string(key::Key) = dec(key.value)
-Base.show(io::IO, key::Key) = (write(io, "IPC.Key: ", dec(key.value)); nothing)
-
+# The short version of `show` if also used for string interpolation in
+# scripts so that extending methods:
+#     Base.convert(::Type{String}, obj::T)
+#     Base.string(obj::T)
+# is not necessary.
+Base.show(io::IO, key::Key) = print(io, "IPC.Key(", dec(key.value), ")")
+Base.show(io::IO, id::ShmId) = print(io, "IPC.ShmId(", dec(id.value), ")")
+Base.show(io::IO, ::MIME"text/plain", arg::Union{ShmId,Key}) = show(io, arg)
 
 """
 

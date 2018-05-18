@@ -11,13 +11,6 @@
 
 const BAD_PTR = Ptr{Void}(-1)
 
-# a bit of magic for calling C-code:
-Base.convert(::Type{Cint}, id::ShmId) = id.value
-Base.convert(::Type{String}, id::ShmId) = string(id)
-
-Base.string(id::ShmId) = dec(id.value)
-Base.show(io::IO, id::ShmId) =
-    (write(io, "IPC.ShmId: "*dec(id.value)); nothing)
 
 """
 # Array attached to a shared memory segment
