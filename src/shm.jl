@@ -114,15 +114,31 @@ function ShmArray(::Type{T}, dims::NTuple{N,Int};
                   key::Key=PRIVATE, perms::Integer=0,
                   offset::Integer=0, persistent::Bool=false,
                   info::ShmInfo=ShmInfo()) :: ShmArray{T,N} where {T,N}
+    # Check arguments and compute size of shared memory segment.
     _checktypeoffset(T, offset)
-    siz = sizeof(T)*prod(dims) + offset
-    # make sure creator has at least read-write access
+    number = checkdims(dims)
+    nbytes = offset + sizeof(T)*number
+
+    # Get shared memory segment (make sure creator has at least read-write
+    # access).
     flags = (Cint(perms & (S_IRWXU|S_IRWXG|S_IRWXO)) |
              (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL))
-    id = shmget(key, siz, flags)
-    arr = _attachsharedarray(id, T, dims, offset, false, info)
-    persistent || shmrm(arr) # mark for destruction on last detach
-    return arr
+    id = shmget(key, nbytes, flags)
+
+    # Attach shared memory segment to process address space and wrap a Julia
+    # array around it.
+    ptr = C_NULL
+    try
+        ptr = shmat(id, false)
+        shminfo!(id, info)
+        info.segsz ≥ nbytes || error("shared memory segment is too small")
+        persistent || shmrm(id) # mark for destruction on last detach
+        return _buildsharedarray(id, ptr, offset, T, dims)
+    catch ex
+        _shmrm(id)
+        ptr != C_NULL && _shmdt(ptr)
+        rethrow(ex)
+    end
 end
 
 ShmArray(T::DataType, dims::Integer...; kwds...) =
@@ -131,14 +147,23 @@ ShmArray(T::DataType, dims::Integer...; kwds...) =
 function ShmArray(id::ShmId, ::Type{T}=UInt8;
                   readonly::Bool=false, info::ShmInfo=ShmInfo(),
                   offset::Integer=0) :: ShmArray{T,1} where {T}
-     _checktypeoffset(T, offset)
-    ptr = shmat!(id, readonly, info)
+    # Check arguments and compute number of elements after offset.
+    _checktypeoffset(T, offset)
+    shminfo!(id, info)
     segsz = info.segsz
     offset ≤ segsz ||
         throw(ArgumentError("offset must be smaller or equal $segsz"))
-    len = div(segsz - offset, sizeof(T))
-    arr = unsafe_wrap(Array, Ptr{T}(ptr + offset), len, false)
-    return ShmArray{T,1}(arr, ptr, id)
+    len = convert(Int, div(segsz - offset, sizeof(T)))
+
+    # Attach shared memory segment to process address space and wrap a Julia
+    # array around it.
+    ptr = shmat(id, readonly)
+    try
+        return _buildsharedarray(id, ptr, offset, T, (len,))
+    catch ex
+        _shmdt(ptr)
+        rethrow(ex)
+    end
 end
 
 ShmArray(key::Key, T::DataType=UInt8; readonly::Bool=false, kwds...) =
@@ -147,19 +172,27 @@ ShmArray(key::Key, T::DataType=UInt8; readonly::Bool=false, kwds...) =
 function ShmArray(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
                   readonly::Bool=false, info::ShmInfo=ShmInfo(),
                   offset::Integer=0) :: ShmArray{T,N} where {T,N}
+    # Check arguments and compute size of shared memory segment.
     _checktypeoffset(T, offset)
-    return _attachsharedarray(id, T, dims, offset, readonly, info)
+    number = checkdims(dims)
+    nbytes = offset + sizeof(T)*number
+    shminfo!(id, info)
+    info.segsz ≥ nbytes || error("shared memory segment is too small")
+
+    # Attach shared memory segment to process address space and wrap a Julia
+    # array around it.
+    ptr = shmat(id, readonly)
+    try
+        return _buildsharedarray(id, ptr, offset, T, dims)
+    catch ex
+        _shmdt(ptr)
+        rethrow(ex)
+    end
 end
 
-function _attachsharedarray(id::ShmId, ::Type{T}, dims::NTuple{N,Int},
-                            offset::Integer, readonly::Bool,
-                            info::ShmInfo) where {T,N}
-    siz = sizeof(T)*prod(dims) + offset
-    ptr = shmat!(id, readonly, info)
-    if info.segsz < siz
-        _shmdt(ptr)
-        error("shared memory segment is too small")
-    end
+function _buildsharedarray(id::ShmId, ptr::Ptr{Void},
+                           offset::Integer, ::Type{T},
+                           dims::NTuple{N,Int})::ShmArray{T,N} where {T,N}
     arr = unsafe_wrap(Array, Ptr{T}(ptr + offset), dims, false)
     return ShmArray{T,N}(arr, ptr, id)
 end
@@ -340,9 +373,9 @@ function shmat!(id::ShmId, readonly::Bool, info::ShmInfo)
     ptr = shmat(id, readonly)
     try
         shminfo!(id, info)
-    catch e
+    catch err
         _shmdt(ptr)
-        rethrow(e)
+        rethrow(err)
     end
     return ptr
 end
@@ -382,11 +415,13 @@ See also: [`shmat`](@ref), [`shmdt`](@ref);
 """
 function shmrm(id::ShmId)
     systemerror("failed to mark shared memory segment for destruction",
-                _shmctl(id, IPC_RMID, C_NULL) != SUCCESS)
+                _shmrm(id) != SUCCESS)
     return id
 end
 
 shmrm(arg::Union{ShmArray,Key}) = shmrm(shmid(arg))
+
+_shmrm(id::ShmId) = _shmctl(id, IPC_RMID, C_NULL)
 
 """
 # Configure access permissions of a shared memory segment

@@ -141,6 +141,15 @@ makedims(dims::NTuple{N,Integer}) where {N} =
 makedims(dims::AbstractVector{<:Integer}) =
     ntuple(i -> Int(dims[i]), length(dims))
 
+function checkdims(dims::NTuple{N,Int}) where {N}
+    number = 1
+    for i in 1:N
+        dims[i] ≥ 1 || error("invalid dimension (dims[$i] = $(dims[i]))")
+        number *= dims[i]
+    end
+    return number
+end
+
 @inline _peek(ptr::Ptr{T}) where {T} =
     unsafe_load(ptr)
 @inline _peek(::Type{T}, ptr::Ptr) where {T} =
