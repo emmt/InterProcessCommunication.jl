@@ -118,6 +118,9 @@ int main(int argc, char* argv[])
   DEF_CONST(SHM_RDONLY, " = Cint(%d)");
   /*DEF_CONST(SHM_REMAP, "  = Cint(%d)");*/
 
+  fprintf(output, "\n# Memory page size:\n");
+  fprintf(output, "PAGE_SIZE = %ld\n", (long)sysconf(_SC_PAGESIZE));
+
   fprintf(output, "\n# Some standard C-types:\n");
   {
     time_t t;
