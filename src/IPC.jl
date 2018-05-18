@@ -42,5 +42,7 @@ include("utils.jl")
 include("shm.jl")
 include("mutex.jl")
 
+@deprecate IPC_NEW IPC.PRIVATE
+
 end # module IPC
 

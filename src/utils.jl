@@ -22,11 +22,11 @@ Base.show(io::IO, key::Key) = (write(io, "IPC.Key: ", dec(key.value)); nothing)
 
 """
 
-`IPC_NEW` is a special IPC key (of type `IPC.Key`) which indicates that a new
-key should be created.
+`IPC.PRIVATE` is a special IPC key (of type `IPC.Key`) which indicates that a
+new (private) key should be created.
 
 """
-const IPC_NEW = Key(IPC_PRIVATE)
+const PRIVATE = Key(IPC_PRIVATE)
 
 """
 Immutable type `IPC.Key` stores a System V IPC key.  The call:
@@ -44,8 +44,9 @@ For instance:
 key = IPC.Key(".", 'a')
 ```
 
-The special IPC key [`IPC_NEW`](@ref) is also available to indicate that a new
-key should be created.
+The special IPC key [`IPC.PRIVATE`](@ref) is also available to indicate that a
+new (private) key should be created.
+
 """
 Key(path::AbstractString, proj::Union{Char,Integer}) =
     Key(path, convert(Cint, proj))
