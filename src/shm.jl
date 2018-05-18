@@ -6,17 +6,17 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 const BAD_PTR = Ptr{Void}(-1)
 
 # a bit of magic for calling C-code:
-convert(::Type{Cint}, id::ShmId) = id.value
-convert(::Type{String}, id::ShmId) = string(id)
+Base.convert(::Type{Cint}, id::ShmId) = id.value
+Base.convert(::Type{String}, id::ShmId) = string(id)
 
-string(id::ShmId) = dec(id.value)
-show(io::IO, id::ShmId) =
+Base.string(id::ShmId) = dec(id.value)
+Base.show(io::IO, id::ShmId) =
     (write(io, "IPC.ShmId: "*dec(id.value)); nothing)
 
 """
@@ -29,7 +29,9 @@ memory segment.
 
 To get an array attached to a new *volatile* shared memory segment:
 
-    ShmArray(T, dims...; key=IPC_NEW, perms=...)
+```julia
+ShmArray(T, dims...; key=IPC_NEW, perms=...)
+```
 
 where `T` and `dims` are the element type and the dimensions of the array.  The
 shared memory segment is *volatile* in the sense that it will be automatically
@@ -42,9 +44,11 @@ will be granted.
 
 To attach an array to an existing shared memory segment:
 
-    ShmArray(id; readonly=false, info=...)
-    ShmArray(id, T; readonly=false, info=...)
-    ShmArray(id, T, dims...; readonly=false, info=...)
+```julia
+ShmArray(id; readonly=false, info=...)
+ShmArray(id, T; readonly=false, info=...)
+ShmArray(id, T, dims...; readonly=false, info=...)
+```
 
 where `id` is the identifier of the shared memory segment of the IPC key
 associated with it.  Arguments `T` and `dims` specify the element type and the
@@ -59,7 +63,9 @@ caller must have sufficient permissions.
 
 Finally:
 
-    ShmArray(arr; key=IPC_NEW, perms=...)
+```julia
+ShmArray(arr; key=IPC_NEW, perms=...)
+```
 
 yields a new shared memory array whose type, dimensions and contents are copied
 from `arr`.
@@ -67,26 +73,32 @@ from `arr`.
 The value returned by `ShmArray()`, say `shm`, behaves like a dense Julia
 array:
 
-    shm[i]          # retrieve value of i-th byte
-    shm[i] = val    # set value of i-th byte
+```julia
+shm[i]          # retrieve value of i-th byte
+shm[i] = val    # set value of i-th byte
+```
 
 of course, `i` can also be a range, multiple indices, etc.  The number of
 elements, the dimensions, etc., are accessible by:
 
-    length(shm)
-    sizeof(shm)
-    size(shm)
-    size(shm, i)
-    eltype(shm)
+```julia
+length(shm)
+sizeof(shm)
+size(shm)
+size(shm, i)
+eltype(shm)
+```
 
 The handle can also be reinterpreted or reshaped:
 
-    reinterpret(T, shm)
-    reshape(shm, dims)
+```julia
+reinterpret(T, shm)
+reshape(shm, dims)
+```
 
 """
-function ShmArray{T,N}(::Type{T}, dims::NTuple{N,Int};
-                       key::Key=IPC_NEW, perms::Integer=0)
+function ShmArray(::Type{T}, dims::NTuple{N,Int};
+                  key::Key=IPC_NEW, perms::Integer=0) where {T,N}
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
     # make sure creator has at least read-write access
@@ -97,7 +109,7 @@ function ShmArray{T,N}(::Type{T}, dims::NTuple{N,Int};
     return arr
 end
 
-ShmArray{T}(::Type{T}, dims::Integer...; kwds...) =
+ShmArray(::Type{T}, dims::Integer...; kwds...) where {T} =
     ShmArray(T, makedims(dims); kwds...)
 
 function ShmArray(id::ShmId, T::DataType=UInt8;
@@ -112,8 +124,8 @@ end
 ShmArray(key::Key, T::DataType=UInt8; readonly::Bool=false, kwds...) =
     ShmArray(shmid(key, readonly), T; readonly=readonly, kwds...)
 
-function ShmArray{T,N}(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
-                       readonly::Bool=false, info::ShmInfo=ShmInfo())
+function ShmArray(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
+                  readonly::Bool=false, info::ShmInfo=ShmInfo()) where {T,N}
     @assert isbits(T)
     siz = sizeof(T)*prod(dims)
     ptr = shmat!(id, readonly, info)
@@ -125,63 +137,63 @@ function ShmArray{T,N}(id::ShmId, ::Type{T}, dims::NTuple{N,Int};
     return ShmArray{T,N}(buf, ptr, id)
 end
 
-function ShmArray{T,N}(key::Key, ::Type{T}, dims::NTuple{N,Int};
-                       readonly::Bool=false, kwds...)
+function ShmArray(key::Key, ::Type{T}, dims::NTuple{N,Int};
+                  readonly::Bool=false, kwds...) where {T,N}
     ShmArray(shmid(key, readonly), T, dims; readonly=readonly, kwds...)
 end
 
-function ShmArray{T}(arg::Union{ShmId,Key}, ::Type{T},
-                     dims::Integer...; kwds...)
+function ShmArray(arg::Union{ShmId,Key}, ::Type{T},
+                  dims::Integer...; kwds...) where {T}
     ShmArray(arg, T, makedims(dims); kwds...)
 end
 
-ShmArray{T,N}(arr::AbstractArray{T,N}; kwds...) =
+ShmArray(arr::AbstractArray{T,N}; kwds...) where {T,N} =
     copy!(ShmArray(T, size(arr); kwds...), arr)
 
-convert{T,N}(::Type{ShmArray{T,N}}, arr::AbstractArray{T,N}) =
+Base.convert(::Type{ShmArray{T,N}}, arr::AbstractArray{T,N}) where {T,N} =
     ShmArray(arr)
 
-convert{T,N}(::Type{ShmArray{T,N}}, arr::ShmArray{T,N}) = arr
+Base.convert(::Type{ShmArray{T,N}}, arr::ShmArray{T,N}) where {T,N} = arr
 
-getindex(shm::ShmArray, i1) = getindex(shm._buf, i1)
+Base.getindex(shm::ShmArray, i1) = getindex(shm._buf, i1)
 
-getindex(shm::ShmArray, i1, i2...) = getindex(shm._buf, i1, i2...)
+Base.getindex(shm::ShmArray, i1, i2...) = getindex(shm._buf, i1, i2...)
 
-setindex!(shm::ShmArray, value, i1) = setindex!(shm._buf, value, i1)
+Base.setindex!(shm::ShmArray, value, i1) = setindex!(shm._buf, value, i1)
 
-setindex!(shm::ShmArray, value, i1, i2...) =
+Base.setindex!(shm::ShmArray, value, i1, i2...) =
     setindex!(shm._buf, value, i1, i2...)
 
-eltype{T,N}(shm::ShmArray{T,N}) = T
+Base.eltype(shm::ShmArray{T,N}) where {T,N} = T
 
-length(shm::ShmArray) = length(shm._buf)
+Base.length(shm::ShmArray) = length(shm._buf)
 
-ndims{T,N}(shm::ShmArray{T,N}) = N
+Base.ndims(shm::ShmArray{T,N}) where {T,N} = N
 
-sizeof(shm::ShmArray) = sizeof(shm._buf)
+Base.sizeof(shm::ShmArray) = sizeof(shm._buf)
 
-size(shm::ShmArray) = size(shm._buf)
+Base.size(shm::ShmArray) = size(shm._buf)
 
-size(shm::ShmArray, i::Number) = size(shm._buf, i)
+Base.size(shm::ShmArray, i::Number) = size(shm._buf, i)
 
-eachindex(shm::ShmArray) = eachindex(shm._buf)
+Base.eachindex(shm::ShmArray) = eachindex(shm._buf)
 
-@compat Base.IndexStyle(::Type{<:ShmArray}) = Base.IndexLinear()
+Base.IndexStyle(::Type{<:ShmArray}) = Base.IndexLinear()
 
-stride(shm::ShmArray, i::Integer) = stride(shm._buf, i)
+Base.stride(shm::ShmArray, i::Integer) = stride(shm._buf, i)
 
-strides(shm::ShmArray) = strides(shm._buf)
+Base.strides(shm::ShmArray) = strides(shm._buf)
 
-copy(shm::ShmArray) = copy(shm._buf)
+Base.copy(shm::ShmArray) = copy(shm._buf)
 
-copy!(dest::ShmArray, src::AbstractArray) = (copy!(dest._buf, src); dest)
+Base.copy!(dest::ShmArray, src::AbstractArray) = (copy!(dest._buf, src); dest)
 
-pointer(shm::ShmArray) = pointer(shm._buf)
+Base.pointer(shm::ShmArray) = pointer(shm._buf)
 
-reinterpret{T}(::Type{T}, shm::ShmArray) =
+Base.reinterpret(::Type{T}, shm::ShmArray) where {T} =
     reinterpret(T, shm._buf)
 
-reshape(shm::ShmArray, dims::Tuple{Vararg{Int}}) =
+Base.reshape(shm::ShmArray, dims::Tuple{Vararg{Int}}) =
     reshape(shm._buf, dims)
 
 """
@@ -189,9 +201,11 @@ reshape(shm::ShmArray, dims::Tuple{Vararg{Int}}) =
 
 The following calls:
 
-    shmid(id)                  -> id
-    shmid(shm)                 -> id
-    shmid(key, readlony=false) -> id
+```julia
+shmid(id)                  -> id
+shmid(shm)                 -> id
+shmid(key, readlony=false) -> id
+```
 
 yield the the identifier of the existing shared memory segment associated with
 the value of the first argument.  `id` is the identifier of the shared memory
@@ -211,14 +225,16 @@ shmid(key::Key, readonly::Bool=false) =
 
 The call:
 
-    shmget(key, siz, flg) -> id
+```julia
+shmget(key, siz, flg) -> id
+```
 
 yields the identifier of the shared memory segment associated with the value of
 the argument `key`.  A new shared memory segment, with size equal to the value
-of `siz` (possibly rounded up to a multiple of the memory page size), is
-created if `key` has the value `IPC_NEW` or `key` isn't `IPC_NEW`, no shared
-memory segment corresponding to `key` exists, and `IPC_CREAT` is specified in
-argument `flg`.
+of `siz` (possibly rounded up to a multiple of the memory page size
+`IPC.PAGE_SIZE`), is created if `key` has the value `IPC_NEW` or `key` isn't
+`IPC_NEW`, no shared memory segment corresponding to `key` exists, and
+`IPC_CREAT` is specified in argument `flg`.
 
 Arguments are:
 
@@ -231,50 +247,53 @@ Arguments are:
   permissions granted to the owner, group, and others.  These bits have the
   same format, and the same meaning, as the mode argument of `chmod`.  Bit
   `IPC_CREAT` can be set to create a new segment.  If this flag is not used,
-  then `shmget` will find the segment associated with `key` and
-  check to see if the user has permission to access the segment.  Bit
-  `IPC_EXCL` can be set in addition to `IPC_CREAT` to ensure that this call
-  creates the segment.  If the segment already exists, the call fails.
+  then `shmget` will find the segment associated with `key` and check to see if
+  the user has permission to access the segment.  Bit `IPC_EXCL` can be set in
+  addition to `IPC_CREAT` to ensure that this call creates the segment.  If
+  `IPC_EXCL` and `IPC_CREAT` are both set, the call will fail if the segment
+  already exists.
 
 """
 function shmget(key::Key, siz::Integer, flg::Integer)
     id = ccall(:shmget, Cint, (_typeof_key_t, Csize_t, Cint),
                key.value, siz, flg)
-    id ≥ 0 || throw(SystemError("shmget failed"))
+    systemerror("shmget", id < 0)
     return ShmId(id)
 end
 
 """
-
-    shmat(id, readonly) -> ptr
+```julia
+shmat(id, readonly) -> ptr
+```
 
 attaches a shared memory segment to the address space of the caller.  Argument
-`id` is he identifier of the shared memory segment.  Boolean argument
+`id` is the identifier of the shared memory segment.  Boolean argument
 `readonly` specifies whether to attach the segment for read-only access;
-otherwise (the default), the segment is attached for read and write access, and
-the process must have read and write permission for the segment.  The returned
-value is the pointer to access the shared memory segment.
+otherwise, the segment is attached for read and write access and the process
+must have read and write permission for the segment.  The returned value is the
+pointer to access the shared memory segment.
 
-See also: [`shmat`](@ref), [`shmdt`](@ref);
+See also: [`shmat!`](@ref), [`shmdt`](@ref), [`shmrm`](@ref).
 
 """
 function shmat(id::ShmId, readonly::Bool)
     shmflg = (readonly ? SHM_RDONLY : zero(SHM_RDONLY))
     ptr = ccall(:shmat, Ptr{Void}, (Cint, Ptr{Void}, Cint),
                 id.value, C_NULL, shmflg)
-    ptr != BAD_PTR || throw(SystemError("shmat failed"))
+    systemerror("shmat", ptr == BAD_PTR)
     return ptr
 end
 
 """
-
-    shmat!(id, readonly, info) -> ptr
+```julia
+shmat!(id, readonly, info) -> ptr
+```
 
 attaches a shared memory segment to the address space of the caller.  Argument
 `id`, argument `readonly` and returned value are the same as for `shmat`.
 Argument `info` is used to store information about the shared memory segment.
 
-See also: [`shmat!`](@ref), [`shmdt`](@ref);
+See also: [`shmat`](@ref), [`shmdt`](@ref), [`shmrm`](@ref).
 
 """
 function shmat!(id::ShmId, readonly::Bool, info::ShmInfo)
@@ -289,17 +308,16 @@ function shmat!(id::ShmId, readonly::Bool, info::ShmInfo)
 end
 
 """
-
-    shmdt(ptr)
+```julia
+shmdt(ptr)
+```
 
 detaches a shared memory segment from the address space of the caller.
-Argument `ptr` is the pointer returned by a previous `shmat()` call.
+Argument `ptr` is the pointer returned by a previous `shmat()` or `shmat!()`
+call.
 
 """
-function shmdt(ptr::Ptr{Void})
-    _shmdt(ptr) == SUCCESS || throw(SystemError("shmdt failed"))
-    return nothing
-end
+shmdt(ptr::Ptr{Void}) = systemerror("shmdt", _shmdt(ptr) != SUCCESS)
 
 @inline _shmdt(ptr::Ptr{Void}) = ccall(:shmdt, Cint, (Ptr{Void},), ptr)
 
@@ -310,18 +328,21 @@ end
 To ensure that a shared memory segment is destroyed when no more processes are
 attached to it, call:
 
-    shmrm(arg) -> id
+```julia
+shmrm(arg) -> id
+```
 
 where the argument can be the identifier of the shared memory segment, a shared
 array attached to the shared memory segment or the System V IPC key associated
 with the shared memory segment.  In all cases, the identifier of the shared
 memory segment is returned.
 
+See also: [`shmat`](@ref), [`shmdt`](@ref);
+
 """
 function shmrm(id::ShmId)
-    if _shmctl(id, IPC_RMID, C_NULL) != SUCCESS
-        throw(SystemError("failed to mark shared memory segment for destruction"))
-    end
+    systemerror("failed to mark shared memory segment for destruction",
+                _shmctl(id, IPC_RMID, C_NULL) != SUCCESS)
     return id
 end
 
@@ -332,7 +353,9 @@ shmrm(arg::Union{ShmArray,Key}) = shmrm(shmid(arg))
 
 To change the access permissions of a shared memory segment, call:
 
-    shmcfg(arg, perms) -> id
+```julia
+shmcfg(arg, perms) -> id
+```
 
 where `perms` specifies bitwise flags with the new permissions.  The first
 argument can be the identifier of the shared memory segment, a shared array
@@ -355,9 +378,7 @@ function shmcfg(id::ShmId, perms::Cushort)
         end
     end
     Libc.free(buf)
-    if status != SUCCESS
-        throw(SystemError("shmctl failed"))
-    end
+    systemerror("shmctl", status != SUCCESS)
     return id
 end
 
@@ -372,7 +393,9 @@ shmcfg(arg::Union{ShmArray,Key}, perms::Integer) =
 
 To store information about a shared memory segment into `info`, call:
 
-    shminfo!(arg, info) -> info
+```julia
+shminfo!(arg, info) -> info
+```
 
 where `info` is an instance of `ShmInfo` and the first argument can be
 the identifier of the shared memory segment, a shared array attached to the
@@ -382,8 +405,9 @@ segment.  In all cases, `info` is returned.
 To retrieve information about a shared memory segment without providing an
 instance of `ShmInfo`, call:
 
-    shminfo(arg) -> info
-
+```julia
+shminfo(arg) -> info
+```
 """
 function shminfo!(id::ShmId, info::ShmInfo)
     buf = Libc.malloc(_sizeof_struct_shmid_ds)
@@ -405,7 +429,7 @@ function shminfo!(id::ShmId, info::ShmInfo)
         info.cgid   = _peek(_typeof_gid_t,    buf, _offsetof_shm_perm_cgid)
     end
     Libc.free(buf)
-    status == SUCCESS || throw(SystemError("shmctl failed"))
+    systemerror("shmctl", status != SUCCESS)
     return info
 end
 

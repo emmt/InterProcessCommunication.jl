@@ -6,11 +6,13 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 """
-    IPC.Mutex()
+```julia
+IPC.Mutex()
+```
 
 yields an initialized POSIX mutex.  Associated ressources are automatically
 destroy when the returned object is grabage collected.  It is however the
@@ -20,7 +22,7 @@ See also: [`IPC.Condition`](@ref), [`lock`](@ref), [`unlock`](@ref),
           [`trylock`](@ref).
 
 """
-type Mutex
+mutable struct Mutex
     handle::Ptr{Void}
     function Mutex()
         buf = Libc.malloc(_sizeof_pthread_mutex_t)
@@ -29,7 +31,7 @@ type Mutex
                  buf, C_NULL) != SUCCESS
             # In principle, `pthread_mutex_init` should always return 0.
             Libc.free(buf)
-            throw(SystemError("pthread_mutex_init failed"))
+            throw(SystemError("pthread_mutex_init"))
         end
         obj = new(buf)
         finalizer(obj, _destroy)
@@ -38,14 +40,16 @@ type Mutex
 end
 
 """
-    IPC.Condition()
+```julia
+IPC.Condition()
+```
 
 yields an initialized POSIX condition variable.  Associated ressources are
 automatically destroy when the returned object is grabage collected.
 
-See also: [`IPC.Mutex`](@ref)
+See also: [`IPC.Mutex`](@ref).
 """
-type Condition
+mutable struct Condition
     handle::Ptr{Void}
     function Condition()
         buf = Libc.malloc(_sizeof_pthread_cond_t)
@@ -53,7 +57,7 @@ type Condition
         if ccall(:pthread_cond_init, Cint, (Ptr{Void}, Ptr{Void}),
                  buf, C_NULL) != SUCCESS
             Libc.free(buf)
-            throw(SystemError("pthread_cond_init failed"))
+            throw(SystemError("pthread_cond_init"))
         end
         obj = new(buf)
         finalizer(obj, _destroy)
@@ -62,8 +66,7 @@ type Condition
 end
 
 function _destroy(obj::Mutex)
-    ptr = obj.handle
-    if ptr != C_NULL
+    if (ptr = obj.handle) != C_NULL
         obj.handle = C_NULL
         ccall(:pthread_mutex_destroy, Cint, (Ptr{Void},), ptr)
         Libc.free(ptr)
@@ -71,8 +74,7 @@ function _destroy(obj::Mutex)
 end
 
 function _destroy(obj::Condition)
-    ptr = obj.handle
-    if ptr != C_NULL
+    if (ptr = obj.handle) != C_NULL
         obj.handle = C_NULL
         ccall(:pthread_cond_destroy, Cint, (Ptr{Void},), ptr)
         Libc.free(ptr)
@@ -82,40 +84,40 @@ end
 Base.pointer(obj::Mutex) = obj.handle
 Base.pointer(obj::Condition) = obj.handle
 
-lock(mutex::Mutex) =
-    if SUCCESS != ccall(:pthread_mutex_lock, Cint, (Ptr{Void},), mutex.handle)
-        throw(SystemError("pthread_mutex_lock failed"))
-    end
+Base.lock(mutex::Mutex) =
+    systemerror("pthread_mutex_lock",
+                ccall(:pthread_mutex_lock, Cint, (Ptr{Void},),
+                      mutex.handle) != SUCCESS)
 
-unlock(mutex::Mutex) =
-    if SUCCESS != ccall(:pthread_mutex_unlock, Cint, (Ptr{Void},),
-                        mutex.handle)
-        throw(SystemError("pthread_mutex_unlock failed"))
-    end
+Base.unlock(mutex::Mutex) =
+    systemerror("pthread_mutex_unlock",
+                ccall(:pthread_mutex_unlock, Cint, (Ptr{Void},),
+                      mutex.handle) != SUCCESS)
 
-trylock(mutex::Mutex) =
+Base.trylock(mutex::Mutex) =
     (ccall(:pthread_mutex_trylock, Cint, (Ptr{Void},), mutex.handle) == SUCCESS)
 
 signal(cond::Condition) =
-    if SUCCESS != ccall(:pthread_cond_signal, Cint, (Ptr{Void},), cond.handle)
-        throw(SystemError("pthread_cond_signal failed"))
-    end
+    systemerror("pthread_cond_signal",
+                ccall(:pthread_cond_signal, Cint, (Ptr{Void},),
+                      cond.handle) != SUCCESS)
 
-broadcast(cond::Condition) =
-    if SUCCESS != ccall(:pthread_cond_broadcast, Cint, (Ptr{Void},), cond.handle)
-        throw(SystemError("pthread_cond_broadcast failed"))
-    end
+Base.broadcast(cond::Condition) =
+    systemerror("pthread_cond_broadcast",
+                ccall(:pthread_cond_broadcast, Cint, (Ptr{Void},),
+                      cond.handle) != SUCCESS)
 
-wait(cond::Condition, mutex::Mutex) =
-    if SUCCESS != ccall(:pthread_cond_wait, Cint, (Ptr{Void}, Ptr{Void}),
-                        cond.handle, mutex.handle)
-        throw(SystemError("pthread_cond_wait failed"))
-    end
+Base.wait(cond::Condition, mutex::Mutex) =
+    systemerror("pthread_cond_wait",
+                ccall(:pthread_cond_wait, Cint, (Ptr{Void}, Ptr{Void}),
+                      cond.handle, mutex.handle) != SUCCESS)
 
 """
-    timedwait(cond, mutex, sec)
-    timedwait(cond, mutex, sec, nsec)
-    timedwait(cond, mutex, abstime)
+```julia
+timedwait(cond, mutex, sec)
+timedwait(cond, mutex, sec, nsec)
+timedwait(cond, mutex, abstime)
+```
 
 A timeout relative to the current time can be specified either by the
 number of seconds `sec` (can be fractional) to wait or by the numbers of
@@ -123,13 +125,13 @@ seconds and nanoseconds `sec` and `sec` (both integers).  Otherwise, an
 absolute timeout can be specified by `abstime` (of type `IPC.TimeSpec`).
 
 """
-timedwait(cond::Condition, mutex::Mutex, sec::Integer, nsec::Integer = 0) =
+Base.timedwait(cond::Condition, mutex::Mutex, sec::Integer, nsec::Integer = 0) =
     timedwait(cond, mutex, Int(sec), Int(nsec))
 
-timedwait(cond::Condition, mutex::Mutex, timeout::AbstractFloat) =
+Base.timedwait(cond::Condition, mutex::Mutex, timeout::AbstractFloat) =
     timedwait(cond, mutex, Float64(timeout))
 
-function timedwait(cond::Condition, mutex::Mutex, sec::Int, nsec::Int)
+function Base.timedwait(cond::Condition, mutex::Mutex, sec::Int, nsec::Int)
     now = gettimeofday()
     sec += now.tv_sec
     nsec += 1_000*now.tv_usec
@@ -138,18 +140,18 @@ function timedwait(cond::Condition, mutex::Mutex, sec::Int, nsec::Int)
     timedwait(cond, mutex, TimeSpec(sec, nsec))
 end
 
-function timedwait(cond::Condition, mutex::Mutex, timeout::Float64)
+function Base.timedwait(cond::Condition, mutex::Mutex, timeout::Float64)
     local sec::Int, nsec::Int
     timeout = max(timeout, 0.0)
     timedwait(cond, mutex, trunc(Int, timeout),
               round(Int, (timeout - trunc(timout))*1E9))
 end
 
-function timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
+function Base.timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
     status = ccall(:pthread_cond_timedwait, Cint,
                    (Ptr{Void}, Ptr{Void}, Ptr{TimeSpec}),
                    cond.handle, mutex.handle, Ref(abstime))
     status == 0 && return true
     status == Libc.ETIMEDOUT && return false
-    throw(SystemError("pthread_cond_timedwait failed"))
+    throw(SystemError("pthread_cond_timedwait"))
 end
