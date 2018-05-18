@@ -30,17 +30,27 @@ memory segment.
 To get an array attached to a new *volatile* shared memory segment:
 
 ```julia
-ShmArray(T, dims...; key=IPC.PRIVATE, perms=..., info=..., offset=...)
+ShmArray(T, dims...; key=IPC.PRIVATE, perms=..., info=...,
+                     offset=0, persistent=false)
 ```
 
-where `T` and `dims` are the element type and the dimensions of the array.  The
-shared memory segment is *volatile* in the sense that it will be automatically
-destroyed when no more processes are attached to it.  Keyword `key` may be used
-to specify an IPC key other than the default `IPC.PRIVATE`.  If `key` is not
-`IPC.PRIVATE`, the method will fail if an IPC identifer already exists with
-that key.  Keyword `perms` can be used to specify the access permissions for
-the created shared memory segment, at least read-write access to the caller
-will be granted.
+where `T` and `dims` are the element type and the dimensions of the array.
+Unless keyword `persistent` is set `true`, the shared memory segment is
+*volatile* in the sense that it will be automatically destroyed when no more
+processes are attached to it (method `shmrm` can be called later to have the
+shared memory automatically destroyed when no more processes are attached to
+it).  Keyword `key` may be used to specify an IPC key other than the default
+`IPC.PRIVATE`.  If `key` is not `IPC.PRIVATE`, the method will fail if an IPC
+identifer already exists with that key.  Keyword `perms` can be used to specify
+the access permissions for the created shared memory segment, at least
+read-write access to the caller will be granted.  Keyword `offset` can be used
+to specify the offset (in bytes) of the first element of the array relative to
+the base of the shared memory segment (`offset` must be a multiple of
+`Base.datatype_alignment(T)`).
+
+The `shmid` method can be applied to the returned shared memory array to
+retrieve the identifier of the associated shared memory.  This identifier is
+need to attach the shared memory in another process.
 
 To attach an array to an existing shared memory segment:
 
@@ -51,15 +61,16 @@ ShmArray(id, T, dims...; readonly=false, info=...)
 ```
 
 where `id` is the identifier of the shared memory segment of the IPC key
-associated with it.  Arguments `T` and `dims` specify the element type and the
-dimensions of the array associated with the attached shared memory segment.  If
-the element type is not specified, `UInt8` is assumed.  If the dimensions are
-not specified, the result is a the longest vector of that type which fits in
-the shared memory segment.  Keyword `info` may be set with an instance of
-`ShmInfo` to store information about the shared memory segment.  Keyword
-`readonly` may be set `true` to require read-only access to the shared memory.
-By default, a read-write access is granted.  Whatever the requested access, the
-caller must have sufficient permissions.
+associated with it (the value returned by the `shmid` method).  Arguments `T`
+and `dims` specify the element type and the dimensions of the array associated
+with the attached shared memory segment.  If the element type is not specified,
+`UInt8` is assumed.  If the dimensions are not specified, the result is a the
+longest vector of that type which fits in the shared memory segment.  Keyword
+`info` may be set with an instance of `ShmInfo` to store information about the
+shared memory segment.  Keyword `readonly` may be set `true` to require
+read-only access to the shared memory.  By default, a read-write access is
+granted.  Whatever the requested access, the caller must have sufficient
+permissions.
 
 Finally:
 
@@ -95,6 +106,8 @@ The handle can also be reinterpreted or reshaped:
 reinterpret(T, shm)
 reshape(shm, dims)
 ```
+
+See also: [`shmid`](@ref), [`shmrm`](@ref), [`Base.datatype_alignment`](@ref).
 
 """
 function ShmArray(::Type{T}, dims::NTuple{N,Int};
