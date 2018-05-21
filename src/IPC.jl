@@ -16,25 +16,30 @@ module IPC
 import Base: lock, unlock, trylock, timedwait, broadcast
 
 export
-    TimeVal,
-    TimeSpec,
-    gettimeofday,
-    nanosleep,
-    signal,
+    CLOCK_MONOTONIC,
+    CLOCK_REALTIME,
     IPC_NEW,
     ShmArray,
     ShmMatrix,
     ShmVector,
+    TimeSpec,
+    TimeVal,
+    clock_getres,
+    clock_gettime,
+    clock_settime,
+    gettimeofday,
+    nanosleep,
     shmarr,
+    shmat!,
+    shmat,
+    shmcfg,
+    shmdt,
     shmget,
     shmid,
-    shmat,
-    shmat!,
-    shmdt,
-    shmrm,
-    shmcfg,
+    shminfo!,
     shminfo,
-    shminfo!
+    shmrm,
+    signal
 
 if stat(joinpath(@__DIR__, "constants.jl")).nlink == 0
     error("File `constants.jl` does not exists.  Run `make all` in the `deps` directory of the `IPC` module.")
@@ -48,4 +53,3 @@ include("mutex.jl")
 @deprecate IPC_NEW IPC.PRIVATE
 
 end # module IPC
-

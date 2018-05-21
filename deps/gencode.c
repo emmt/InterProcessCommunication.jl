@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
@@ -115,6 +116,11 @@ int main(int argc, char* argv[])
   DEF_CONST(S_IWOTH, " = Cint(0o%04o) # others have write permission");
   DEF_CONST(S_IXOTH, " = Cint(0o%04o) # others have execute permission");
 
+  fprintf(output, "\n# Argument for `lseek`:\n");
+  DEF_CONST(SEEK_SET, " = Cint(%d) # offset is relative to the beginning");
+  DEF_CONST(SEEK_CUR, " = Cint(%d) # offset is relative to current position");
+  DEF_CONST(SEEK_END, " = Cint(%d) # offset is relative to the end");
+
   fprintf(output, "\n# Commands for `shmctl`, `semctl` and `msgctl`:\n");
   DEF_CONST(IPC_STAT, " = Cint(%d)");
   DEF_CONST(IPC_SET, "  = Cint(%d)");
@@ -129,10 +135,40 @@ int main(int argc, char* argv[])
   DEF_CONST(SHM_RDONLY, " = Cint(%d)");
   /*DEF_CONST(SHM_REMAP, "  = Cint(%d)");*/
 
+  fprintf(output, "\n# Constants for `mmap`, `msync`, etc.:\n");
+  DEF_CONST(PROT_NONE, "     = Cint(%d)");
+  DEF_CONST(PROT_READ, "     = Cint(%d)");
+  DEF_CONST(PROT_WRITE, "    = Cint(%d)");
+  DEF_CONST(PROT_EXEC, "     = Cint(%d)");
+  DEF_CONST(MAP_SHARED, "    = Cint(%d)");
+  DEF_CONST(MAP_PRIVATE, "   = Cint(%d)");
+  DEF_CONST(MAP_ANONYMOUS, " = Cint(%d)"); /* FIXME: non-POSIX? */
+  DEF_CONST(MAP_FIXED, "     = Cint(%d)");
+  DEF_CONST(MS_ASYNC, "      = Cint(%d)");
+  DEF_CONST(MS_SYNC, "       = Cint(%d)");
+  DEF_CONST(MS_INVALIDATE, " = Cint(%d)");
+
   fprintf(output, "\n# Memory page size:\n");
   fprintf(output, "PAGE_SIZE = %ld\n", (long)sysconf(_SC_PAGESIZE));
 
   fprintf(output, "\n# Some standard C-types:\n");
+  DEF_TYPEOF_TYPE(time_t, "   ");
+  DEF_TYPEOF_TYPE(size_t, "   ");
+  DEF_TYPEOF_TYPE(ssize_t, "  ");
+  DEF_TYPEOF_TYPE(mode_t, "   ");
+  DEF_TYPEOF_TYPE(dev_t, "    ");
+  DEF_TYPEOF_TYPE(ino_t, "    ");
+  DEF_TYPEOF_TYPE(pid_t, "    ");
+  DEF_TYPEOF_TYPE(uid_t, "    ");
+  DEF_TYPEOF_TYPE(gid_t, "    ");
+  DEF_TYPEOF_TYPE(key_t, "    ");
+  DEF_TYPEOF_TYPE(nlink_t, "  ");
+  DEF_TYPEOF_TYPE(shmatt_t, " ");
+  DEF_TYPEOF_TYPE(off_t, "    ");
+  DEF_TYPEOF_TYPE(blksize_t, "");
+  DEF_TYPEOF_TYPE(blkcnt_t, " ");
+
+  fprintf(output, "\n# Fields of `struct timeval` and `struct timespec`:\n");
   {
     time_t t;
     struct timeval tv;
@@ -147,30 +183,48 @@ int main(int argc, char* argv[])
     if (sizeof(tv.tv_sec) != sizeof(t) || (tv.tv_sec < 0) != (t < 0)) {
       error("Field `tv_sec` in `struct timeval` is not of type `time_t`");
     }
+    if (OFFSET_OF(struct timeval, tv_sec) != 0) {
+      error("Field `tv_sec` in `struct timeval` is not the first one");
+    }
     if (sizeof(ts.tv_sec) != sizeof(t) || (ts.tv_sec < 0) != (t < 0)) {
       error("Field `tv_sec` in `struct timespec` is not of type `time_t`");
     }
-    DEF_TYPEOF_LVALUE("time_t  ", t);
-    DEF_TYPEOF_LVALUE("tv_sec  ", tv.tv_sec);
-    DEF_TYPEOF_LVALUE("tv_usec ", tv.tv_usec);
-    DEF_TYPEOF_LVALUE("tv_nsec ", ts.tv_nsec);
+    if (OFFSET_OF(struct timespec, tv_sec) != 0) {
+      error("Field `tv_sec` in `struct timespec` is not the first one");
+    }
+    DEF_TYPEOF_LVALUE("timeval_sec  ", tv.tv_sec);
+    DEF_TYPEOF_LVALUE("timeval_usec ", tv.tv_usec);
+    DEF_TYPEOF_LVALUE("timespec_sec ", ts.tv_sec);
+    DEF_TYPEOF_LVALUE("timespec_nsec", ts.tv_nsec);
   }
-  DEF_TYPEOF_TYPE(mode_t, "  ");
-  DEF_TYPEOF_TYPE(pid_t, "   ");
-  DEF_TYPEOF_TYPE(uid_t, "   ");
-  DEF_TYPEOF_TYPE(gid_t, "   ");
-  DEF_TYPEOF_TYPE(key_t, "   ");
-  DEF_TYPEOF_TYPE(nlink_t, " ");
-  DEF_TYPEOF_TYPE(shmatt_t, "");
+
+  fprintf(output, "\n# Definitions for the POSIX `clock_*` functions:\n");
+  DEF_TYPEOF_TYPE(clockid_t, "");
+  DEF_CONST(CLOCK_REALTIME, "  = convert(_typeof_clockid_t, %d)");
+  DEF_CONST(CLOCK_MONOTONIC, " = convert(_typeof_clockid_t, %d)");
 
   fprintf(output, "\n# Sizes of some standard C types:\n");
-  DEF_SIZEOF_TYPE("struct_stat     ", struct stat);
-  DEF_SIZEOF_TYPE("struct_shmid_ds ", struct shmid_ds);
-  DEF_SIZEOF_TYPE("struct_semid_ds ", struct semid_ds);
   DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
   DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
 
-  fprintf(output, "\n# Offsets of fields in `struct shmid_ds`:\n");
+  fprintf(output, "\n# Definitions for `struct stat`:\n");
+  DEF_SIZEOF_TYPE("struct_stat       ", struct stat);
+  DEF_OFFSETOF("stat_st_dev     ", struct stat, st_dev);
+  DEF_OFFSETOF("stat_st_ino     ", struct stat, st_ino);
+  DEF_OFFSETOF("stat_st_mode    ", struct stat, st_mode);
+  DEF_OFFSETOF("stat_st_nlink   ", struct stat, st_nlink);
+  DEF_OFFSETOF("stat_st_uid     ", struct stat, st_uid);
+  DEF_OFFSETOF("stat_st_gid     ", struct stat, st_gid);
+  DEF_OFFSETOF("stat_st_rdev    ", struct stat, st_rdev);
+  DEF_OFFSETOF("stat_st_size    ", struct stat, st_size);
+  DEF_OFFSETOF("stat_st_blksize ", struct stat, st_blksize);
+  DEF_OFFSETOF("stat_st_blocks  ", struct stat, st_blocks);
+  DEF_OFFSETOF("stat_st_atim    ", struct stat, st_atim);
+  DEF_OFFSETOF("stat_st_mtim    ", struct stat, st_mtim);
+  DEF_OFFSETOF("stat_st_ctim    ", struct stat, st_ctim);
+
+  fprintf(output, "\n# Definitions for `struct shmid_ds`:\n");
+  DEF_SIZEOF_TYPE("struct_shmid_ds", struct shmid_ds);
   DEF_OFFSETOF("shm_perm_uid ", struct shmid_ds, shm_perm.uid);
   DEF_OFFSETOF("shm_perm_gid ", struct shmid_ds, shm_perm.gid);
   DEF_OFFSETOF("shm_perm_cuid", struct shmid_ds, shm_perm.cuid);
@@ -183,6 +237,27 @@ int main(int argc, char* argv[])
   DEF_OFFSETOF("shm_cpid     ", struct shmid_ds, shm_cpid);
   DEF_OFFSETOF("shm_lpid     ", struct shmid_ds, shm_lpid);
   DEF_OFFSETOF("shm_nattch   ", struct shmid_ds, shm_nattch);
+  {
+    struct shmid_ds ds;
+    DEF_TYPEOF_LVALUE("shm_segsz      ", ds.shm_segsz);
+    DEF_TYPEOF_LVALUE("shm_perm_mode  ", ds.shm_perm.mode);
+  }
+
+  fprintf(output, "\n# Definitions for `struct semid_ds`:\n");
+  DEF_SIZEOF_TYPE("struct_semid_ds", struct semid_ds);
+  DEF_OFFSETOF("sem_perm_uid ", struct semid_ds, sem_perm.uid);
+  DEF_OFFSETOF("sem_perm_gid ", struct semid_ds, sem_perm.gid);
+  DEF_OFFSETOF("sem_perm_cuid", struct semid_ds, sem_perm.cuid);
+  DEF_OFFSETOF("sem_perm_cgid", struct semid_ds, sem_perm.cgid);
+  DEF_OFFSETOF("sem_perm_mode", struct semid_ds, sem_perm.mode);
+  DEF_OFFSETOF("sem_otime    ", struct semid_ds, sem_otime);
+  DEF_OFFSETOF("sem_ctime    ", struct semid_ds, sem_ctime);
+  DEF_OFFSETOF("sem_nsems    ", struct semid_ds, sem_nsems);
+  {
+    struct semid_ds ds;
+    DEF_TYPEOF_LVALUE("sem_nsems      ", ds.sem_nsems);
+    DEF_TYPEOF_LVALUE("sem_perm_mode  ", ds.sem_perm.mode);
+  }
 
   fprintf(output, "\n# Special IPC key:\n");
   DEF_CONST(IPC_PRIVATE, " = _typeof_key_t(%d)");

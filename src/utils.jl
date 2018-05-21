@@ -70,14 +70,14 @@ gettimeofday() -> tv
 yields the current time as an instance of `IPC.TimeVal`.  The result can be
 converted into a fractional number of seconds by calling `float(tv)`.
 
-See also: [`IPC.TimeVal`](@ref), [`nanosleep`](@ref).
+See also: [`IPC.TimeVal`](@ref), [`nanosleep`](@ref), [`clock_gettime`](@ref).
 
 """
 function gettimeofday()
-    ref = Ref(TimeVal(0, 0))
+    tv = Ref(TimeVal(0, 0))
     # `gettimeofday` should not fail in this case
-    ccall(:gettimeofday, Cint, (Ptr{TimeVal}, Ptr{Void}), ref, C_NULL)
-    return ref[]
+    ccall(:gettimeofday, Cint, (Ptr{TimeVal}, Ptr{Void}), tv, C_NULL)
+    return tv[]
 end
 
 """
@@ -99,42 +99,145 @@ See also: [`gettimeofday`](@ref), [`sleep`](@ref), [`IPC.TimeSpec`](@ref),
 nanosleep(t::Union{Real,TimeVal}) = nanosleep(TimeSpec(t))
 
 function nanosleep(ts::TimeSpec)
-    rem = Ref(TimeSpec(0, 0))
+    rem = Ref(TimeSpec(0,0))
     ccall(:nanosleep, Cint, (Ptr{TimeSpec}, Ptr{TimeSpec}), Ref(ts), rem)
     return rem[]
 end
 
-Base.float(tv::TimeVal) = tv.tv_sec + tv.tv_usec/1_000_000
+"""
+```julia
+clock_getres(id) -> ts
+```
 
-Base.float(ts::TimeSpec) = ts.tv_sec + ts.tv_nsec/1_000_000_000
+yields the resolution (precision) of the specified clock `id`. The result is an
+instance of `IPC.TimeSpec`.  Clock identifier `id` can be `CLOCK_REALTIME` or
+`CLOCK_MONOTONIC` (described in [`clock_gettime`](@ref)).
+
+See also: [`clock_gettime`](@ref), [`clock_settime`](@ref),
+          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
+          [`IPC.TimeVal`](@ref).
+
+"""
+function clock_getres(id::Integer)
+    res = Ref(TimeSpec(0,0))
+    systemerror("clock_getres",
+                ccall(:clock_getres, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
+                      id, res) != SUCCESS)
+    return res[]
+end
+
+"""
+```julia
+clock_gettime(id) -> ts
+```
+
+yields the time of the specified clock `id`.  The result is an instance of
+`IPC.TimeSpec`.  Clock identifier `id` can be one of:
+
+* `CLOCK_REALTIME`: System-wide clock that measures real (i.e., wall-clock)
+  time.  This clock is affected by discontinuous jumps in the system time
+  (e.g., if the system administrator manually changes the clock), and by the
+  incremental adjustments performed by `adjtime` and NTP.
+
+* `CLOCK_MONOTONIC`: Clock that cannot be set and represents monotonic time
+  since some unspecified starting point.  This clock is not affected by
+  discontinuous jumps in the system time.
+
+See also: [`clock_getres`](@ref), [`clock_settime`](@ref),
+          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
+          [`IPC.TimeVal`](@ref).
+
+"""
+function clock_gettime(id::Integer)
+    ts = Ref(TimeSpec(0,0))
+    systemerror("clock_gettime",
+                ccall(:clock_gettime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
+                      id, ts) != SUCCESS)
+    return ts[]
+end
+
+@doc @doc(clock_gettime) CLOCK_REALTIME
+@doc @doc(clock_gettime) CLOCK_MONOTONIC
+
+"""
+```julia
+clock_settime(id, ts)
+```
+
+set the time of the specified clock `id` to `ts`.  Argument `ts` can be an
+instance of `IPC.TimeSpec` or a number of seconds.  Clock identifier `id` can
+be `CLOCK_REALTIME` or `CLOCK_MONOTONIC` (described in
+[`clock_gettime`](@ref)).
+
+See also: [`clock_getres`](@ref), [`clock_gettime`](@ref),
+          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
+          [`IPC.TimeVal`](@ref).
+
+"""
+clock_settime(id::Integer, sec::Real) =
+    clock_settime(id, TimeSpec(sec))
+
+clock_settime(id::Integer, ts::TimeSpec) =
+    clock_settime(id, Ref{TimeSpec}(sec))
+
+clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
+    systemerror("clock_settime",
+                ccall(:clock_settime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
+                      id, ts) != SUCCESS)
+
+TimeSpec(sec::Real) = convert(TimeSpec, sec)
+
+TimeVal(sec::Real) = convert(TimeVal, sec)
+
+_time_t(x::Integer) = convert(_typeof_time_t, x)
+_time_t(x::Real) = round(_typeof_time_t, x)
+
+Base.float(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 
 Base.convert(::Type{T}, tv::TimeVal) where {T<:AbstractFloat} =
-    convert(T, tv.tv_sec + tv.tv_usec*convert(T, 1E-6))
+    convert(T, tv.sec + tv.usec//_time_t(1_000_000))
 
 Base.convert(::Type{T}, ts::TimeSpec) where {T<:AbstractFloat} =
-    convert(T, ts.tv_sec + ts.tv_nsec*convert(T, 1E-9))
+    convert(T, ts.sec + ts.nsec//_time_t(1_000_000_000))
 
-# FIXME: rounding may yield tv_usec = 1E6 or tv_nsec = 1E9
-# FIXME: floor or trunc?
 Base.convert(::Type{TimeVal}, sec::T) where {T<:AbstractFloat} =
-    TimeVal(trunc(_typeof_tv_sec, sec),
-            round(_typeof_tv_usec,
-                  (sec - trunc(sec))*convert(T, 1_000_000)))
+    TimeVal(_splittime(sec, _time_t(1_000_000))...)
 
 Base.convert(::Type{TimeSpec}, sec::T) where {T<:AbstractFloat} =
-    TimeSpec(trunc(_typeof_tv_sec, sec),
-             round(_typeof_tv_nsec,
-                   (sec - trunc(sec))*convert(T, 1_000_000_000)))
+    TimeSpec(_splittime(sec, _time_t(1_000_000_000))...)
+
+function _splittime(sec::AbstractFloat, mlt::_typeof_time_t)
+    s = floor(sec)
+    ip = _time_t(s)
+    fp = _time_t((sec - s)*mlt)
+    if fp ≥ mlt
+        fp -= mlt
+        ip += one(_typeof_time_t)
+    end
+    return (ip, fp)
+end
 
 Base.convert(::Type{TimeVal}, sec::Integer) = TimeVal(sec, 0)
 
 Base.convert(::Type{TimeSpec}, sec::Integer) = TimeSpec(sec, 0)
 
 Base.convert(::Type{TimeSpec}, tv::TimeVal) =
-    TimeSpec(tv.tv_sec, 1_000*tv.tv_usec)
+    TimeSpec(_fixtime(tv.sec, tv.usec*_time_t(1_000),
+                      _time_t(1_000_000_000))...)
 
 Base.convert(::Type{TimeVal}, ts::TimeSpec) =
-    TimeVal(ts.tv_sec, round(_typeof_tv_usec, ts.ts_nsec/1_000))
+    TimeVal(_fixtime(ts.sec, _time_t(ts.nsec//_time_t(1_000)),
+                      _time_t(1_000_000))...)
+
+function _fixtime(ip::_typeof_time_t, fp::_typeof_time_t, mlt::_typeof_time_t)
+    ip += div(fp, mlt)
+    fp = rem(fp, mlt)
+    if ip < 0
+        ip += mtl
+        fp -= one(_typeof_time_t)
+    end
+    return (ip, fp)
+end
 
 syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
     string(msg," [",Libc.strerror(code),"]")
@@ -167,4 +270,3 @@ end
     _poke!(convert(Ptr{T}, ptr), val)
 @inline _poke!(::Type{T}, ptr::Ptr, off::Integer, val) where {T} =
     _poke!(T, ptr + off, val)
-

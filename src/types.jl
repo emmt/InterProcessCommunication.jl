@@ -10,13 +10,13 @@
 #
 
 struct TimeVal
-    tv_sec::_typeof_tv_sec    # seconds
-    tv_usec::_typeof_tv_usec  # microseconds
+    sec::_typeof_timeval_sec    # seconds
+    usec::_typeof_timeval_usec  # microseconds
 end
 
 struct TimeSpec
-    tv_sec::_typeof_tv_sec    # seconds
-    tv_nsec::_typeof_tv_nsec  # nanoseconds
+    sec::_typeof_timespec_sec    # seconds
+    nsec::_typeof_timespec_nsec  # nanoseconds
 end
 
 struct Key
@@ -59,4 +59,3 @@ mutable struct ShmInfo
     cgid::UInt32  # effective group ID of creator
     ShmInfo() = new(0,0,0,0,0,0,0,0,0,0,0,0,0)
 end
-
