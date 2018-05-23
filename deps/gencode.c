@@ -26,6 +26,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#ifdef __APPLE__
+# define st_atim st_atimespec
+# define st_mtim st_mtimespec
+# define st_ctim st_ctimespec
+#endif
+
 /* Determine the offset of a field in a structure. */
 #define OFFSET_OF(type, field) ((char*)&((type*)0)->field - (char*)0)
 
@@ -224,9 +230,9 @@ int main(int argc, char* argv[])
   DEF_OFFSETOF("stat_size    ", struct stat, st_size);
   DEF_OFFSETOF("stat_blksize ", struct stat, st_blksize);
   DEF_OFFSETOF("stat_blocks  ", struct stat, st_blocks);
-  DEF_OFFSETOF("stat_atim    ", struct stat, st_atim);
-  DEF_OFFSETOF("stat_mtim    ", struct stat, st_mtim);
-  DEF_OFFSETOF("stat_ctim    ", struct stat, st_ctim);
+  DEF_OFFSETOF("stat_atime   ", struct stat, st_atim);
+  DEF_OFFSETOF("stat_mtime   ", struct stat, st_mtim);
+  DEF_OFFSETOF("stat_ctime   ", struct stat, st_ctim);
 
   fprintf(output, "\n# Definitions for `struct shmid_ds`:\n");
   DEF_SIZEOF_TYPE("struct_shmid_ds", struct shmid_ds);

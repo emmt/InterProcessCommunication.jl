@@ -8,8 +8,10 @@ all: ../src/constants.jl
 clean:
 	rm -f *~ core gencode
 
-gencode: gencode.c
+man-fstat:
 	LANG=C man fstat | cat
+
+gencode: gencode.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o "$@" "$<" $(LDFLAGS)
 
 ../src/constants.jl: constants-header.jl gencode
