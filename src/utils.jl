@@ -254,6 +254,12 @@ function checkdims(dims::NTuple{N,<:Integer}) where {N}
     return number
 end
 
+roundup(a::Integer, b::Integer) =
+    roundup(convert(Int, a), convert(Int, b))
+
+roundup(a::Int, b::Int) =
+    div(a + (b - 1), b)*b
+
 @inline _peek(ptr::Ptr{T}) where {T} =
     unsafe_load(ptr)
 @inline _peek(::Type{T}, ptr::Ptr) where {T} =
