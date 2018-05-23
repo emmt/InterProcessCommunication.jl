@@ -168,7 +168,7 @@ function Base.open(::Type{FileDescriptor}, path::AbstractString,
             break
         end
     end
-    return _open(path, flags0|flags1, mode)
+    return open(FileDescriptor, path, flags0|flags1, mode)
 end
 
 function Base.close(obj::FileDescriptor)
