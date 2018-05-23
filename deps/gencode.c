@@ -94,6 +94,23 @@ int main(int argc, char* argv[])
     goto usage;
   }
 
+  fprintf(output, "\n# Some standard C-types:\n");
+  DEF_TYPEOF_TYPE(time_t, "   ");
+  DEF_TYPEOF_TYPE(size_t, "   ");
+  DEF_TYPEOF_TYPE(ssize_t, "  ");
+  DEF_TYPEOF_TYPE(mode_t, "   ");
+  DEF_TYPEOF_TYPE(dev_t, "    ");
+  DEF_TYPEOF_TYPE(ino_t, "    ");
+  DEF_TYPEOF_TYPE(pid_t, "    ");
+  DEF_TYPEOF_TYPE(uid_t, "    ");
+  DEF_TYPEOF_TYPE(gid_t, "    ");
+  DEF_TYPEOF_TYPE(key_t, "    ");
+  DEF_TYPEOF_TYPE(nlink_t, "  ");
+  DEF_TYPEOF_TYPE(shmatt_t, " ");
+  DEF_TYPEOF_TYPE(off_t, "    ");
+  DEF_TYPEOF_TYPE(blksize_t, "");
+  DEF_TYPEOF_TYPE(blkcnt_t, " ");
+
   fprintf(output, "\n# Bits for creating/opening a file:\n");
   DEF_CONST(O_RDONLY, " = Cint(0o%04o)");
   DEF_CONST(O_WRONLY, " = Cint(0o%04o)");
@@ -103,18 +120,18 @@ int main(int argc, char* argv[])
   DEF_CONST(O_TRUNC, "  = Cint(0o%04o)");
 
   fprintf(output, "\n# Bits for file permissions:\n");
-  DEF_CONST(S_IRWXU, " = Cint(0o%04o) # user has read, write, and execute permission");
-  DEF_CONST(S_IRUSR, " = Cint(0o%04o) # user has read permission");
-  DEF_CONST(S_IWUSR, " = Cint(0o%04o) # user has write permission");
-  DEF_CONST(S_IXUSR, " = Cint(0o%04o) # user has execute permission");
-  DEF_CONST(S_IRWXG, " = Cint(0o%04o) # group has read, write, and execute permission");
-  DEF_CONST(S_IRGRP, " = Cint(0o%04o) # group has read permission");
-  DEF_CONST(S_IWGRP, " = Cint(0o%04o) # group has write permission");
-  DEF_CONST(S_IXGRP, " = Cint(0o%04o) # group has execute permission");
-  DEF_CONST(S_IRWXO, " = Cint(0o%04o) # others have read, write, and execute permission");
-  DEF_CONST(S_IROTH, " = Cint(0o%04o) # others have read permission");
-  DEF_CONST(S_IWOTH, " = Cint(0o%04o) # others have write permission");
-  DEF_CONST(S_IXOTH, " = Cint(0o%04o) # others have execute permission");
+  DEF_CONST(S_IRWXU, " = _typeof_mode_t(0o%04o) # user has read, write, and execute permission");
+  DEF_CONST(S_IRUSR, " = _typeof_mode_t(0o%04o) # user has read permission");
+  DEF_CONST(S_IWUSR, " = _typeof_mode_t(0o%04o) # user has write permission");
+  DEF_CONST(S_IXUSR, " = _typeof_mode_t(0o%04o) # user has execute permission");
+  DEF_CONST(S_IRWXG, " = _typeof_mode_t(0o%04o) # group has read, write, and execute permission");
+  DEF_CONST(S_IRGRP, " = _typeof_mode_t(0o%04o) # group has read permission");
+  DEF_CONST(S_IWGRP, " = _typeof_mode_t(0o%04o) # group has write permission");
+  DEF_CONST(S_IXGRP, " = _typeof_mode_t(0o%04o) # group has execute permission");
+  DEF_CONST(S_IRWXO, " = _typeof_mode_t(0o%04o) # others have read, write, and execute permission");
+  DEF_CONST(S_IROTH, " = _typeof_mode_t(0o%04o) # others have read permission");
+  DEF_CONST(S_IWOTH, " = _typeof_mode_t(0o%04o) # others have write permission");
+  DEF_CONST(S_IXOTH, " = _typeof_mode_t(0o%04o) # others have execute permission");
 
   fprintf(output, "\n# Argument for `lseek`:\n");
   DEF_CONST(SEEK_SET, " = Cint(%d) # offset is relative to the beginning");
@@ -144,29 +161,13 @@ int main(int argc, char* argv[])
   DEF_CONST(MAP_PRIVATE, "   = Cint(%d)");
   DEF_CONST(MAP_ANONYMOUS, " = Cint(%d)"); /* FIXME: non-POSIX? */
   DEF_CONST(MAP_FIXED, "     = Cint(%d)");
+  fprintf(output, "const MAP_FAILED    = Ptr{Void}(-1)\n");
   DEF_CONST(MS_ASYNC, "      = Cint(%d)");
   DEF_CONST(MS_SYNC, "       = Cint(%d)");
   DEF_CONST(MS_INVALIDATE, " = Cint(%d)");
 
   fprintf(output, "\n# Memory page size:\n");
   fprintf(output, "PAGE_SIZE = %ld\n", (long)sysconf(_SC_PAGESIZE));
-
-  fprintf(output, "\n# Some standard C-types:\n");
-  DEF_TYPEOF_TYPE(time_t, "   ");
-  DEF_TYPEOF_TYPE(size_t, "   ");
-  DEF_TYPEOF_TYPE(ssize_t, "  ");
-  DEF_TYPEOF_TYPE(mode_t, "   ");
-  DEF_TYPEOF_TYPE(dev_t, "    ");
-  DEF_TYPEOF_TYPE(ino_t, "    ");
-  DEF_TYPEOF_TYPE(pid_t, "    ");
-  DEF_TYPEOF_TYPE(uid_t, "    ");
-  DEF_TYPEOF_TYPE(gid_t, "    ");
-  DEF_TYPEOF_TYPE(key_t, "    ");
-  DEF_TYPEOF_TYPE(nlink_t, "  ");
-  DEF_TYPEOF_TYPE(shmatt_t, " ");
-  DEF_TYPEOF_TYPE(off_t, "    ");
-  DEF_TYPEOF_TYPE(blksize_t, "");
-  DEF_TYPEOF_TYPE(blkcnt_t, " ");
 
   fprintf(output, "\n# Fields of `struct timeval` and `struct timespec`:\n");
   {
@@ -209,19 +210,19 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Definitions for `struct stat`:\n");
   DEF_SIZEOF_TYPE("struct_stat       ", struct stat);
-  DEF_OFFSETOF("stat_st_dev     ", struct stat, st_dev);
-  DEF_OFFSETOF("stat_st_ino     ", struct stat, st_ino);
-  DEF_OFFSETOF("stat_st_mode    ", struct stat, st_mode);
-  DEF_OFFSETOF("stat_st_nlink   ", struct stat, st_nlink);
-  DEF_OFFSETOF("stat_st_uid     ", struct stat, st_uid);
-  DEF_OFFSETOF("stat_st_gid     ", struct stat, st_gid);
-  DEF_OFFSETOF("stat_st_rdev    ", struct stat, st_rdev);
-  DEF_OFFSETOF("stat_st_size    ", struct stat, st_size);
-  DEF_OFFSETOF("stat_st_blksize ", struct stat, st_blksize);
-  DEF_OFFSETOF("stat_st_blocks  ", struct stat, st_blocks);
-  DEF_OFFSETOF("stat_st_atim    ", struct stat, st_atim);
-  DEF_OFFSETOF("stat_st_mtim    ", struct stat, st_mtim);
-  DEF_OFFSETOF("stat_st_ctim    ", struct stat, st_ctim);
+  DEF_OFFSETOF("stat_dev     ", struct stat, st_dev);
+  DEF_OFFSETOF("stat_ino     ", struct stat, st_ino);
+  DEF_OFFSETOF("stat_mode    ", struct stat, st_mode);
+  DEF_OFFSETOF("stat_nlink   ", struct stat, st_nlink);
+  DEF_OFFSETOF("stat_uid     ", struct stat, st_uid);
+  DEF_OFFSETOF("stat_gid     ", struct stat, st_gid);
+  DEF_OFFSETOF("stat_rdev    ", struct stat, st_rdev);
+  DEF_OFFSETOF("stat_size    ", struct stat, st_size);
+  DEF_OFFSETOF("stat_blksize ", struct stat, st_blksize);
+  DEF_OFFSETOF("stat_blocks  ", struct stat, st_blocks);
+  DEF_OFFSETOF("stat_atim    ", struct stat, st_atim);
+  DEF_OFFSETOF("stat_mtim    ", struct stat, st_mtim);
+  DEF_OFFSETOF("stat_ctim    ", struct stat, st_ctim);
 
   fprintf(output, "\n# Definitions for `struct shmid_ds`:\n");
   DEF_SIZEOF_TYPE("struct_shmid_ds", struct shmid_ds);

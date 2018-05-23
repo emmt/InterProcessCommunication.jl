@@ -13,24 +13,30 @@ __precompile__(true)
 
 module IPC
 
-import Base: lock, unlock, trylock, timedwait, broadcast
+import Base: SystemError, lock, unlock, trylock, timedwait, broadcast
 
 export
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
+    FileDescriptor,
+    FileStat,
     IPC_NEW,
+    SharedMemory,
     ShmArray,
+    ShmId,
+    ShmInfo,
     ShmMatrix,
     ShmVector,
     TimeSpec,
     TimeVal,
+    WrappedArray,
     clock_getres,
     clock_gettime,
     clock_settime,
+    identifier,
     gettimeofday,
     nanosleep,
     shmarr,
-    shmat!,
     shmat,
     shmcfg,
     shmdt,
@@ -41,11 +47,15 @@ export
     shmrm,
     signal
 
+const PARANOID = true
+
 if stat(joinpath(@__DIR__, "constants.jl")).nlink == 0
     error("File `constants.jl` does not exists.  Run `make all` in the `deps` directory of the `IPC` module.")
 end
 include("constants.jl")
 include("types.jl")
+include("wrappedarrays.jl")
+include("unix.jl")
 include("utils.jl")
 include("shm.jl")
 include("mutex.jl")

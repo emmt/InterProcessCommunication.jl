@@ -21,27 +21,15 @@ end
 
 struct Key
     value::_typeof_key_t
+    Key(value::Integer) = new(value)
 end
 
 struct ShmId
     value::Cint
+    ShmId(value::Integer) = new(value)
 end
 
-mutable struct ShmArray{T,N} <: DenseArray{T,N}
-    # All members shall be considered as private.
-    arr::Array{T,N} # wrapped Julia array
-    ptr::Ptr{Void}  # address where shared memory is attached
-    id::ShmId       # shared memory identifier
-    function ShmArray{T,N}(arr::Array{T,N}, ptr::Ptr{Void},
-                           id::ShmId) where {T,N}
-        obj = new{T,N}(arr, ptr, id)
-        finalizer(obj, _destroy)
-        return obj
-    end
-end
-
-const ShmVector{T} = ShmArray{T,1}
-const ShmMatrix{T} = ShmArray{T,2}
+const Buffer = Vector{UInt8}
 
 mutable struct ShmInfo
     atime::UInt64 # last attach time
@@ -59,3 +47,61 @@ mutable struct ShmInfo
     cgid::UInt32  # effective group ID of creator
     ShmInfo() = new(0,0,0,0,0,0,0,0,0,0,0,0,0)
 end
+
+mutable struct SemInfo
+    otime::UInt64 # last semop time
+    ctime::UInt64 # last change time
+    nsems::Int32  # number of semaphores in set
+    id::Int32     # semaphore set identifier
+    uid::UInt32   # effective user ID of owner
+    gid::UInt32   # effective group ID of owner
+    cuid::UInt32  # effective user ID of creator
+    cgid::UInt32  # effective group ID of creator
+    mode::UInt32  # lower 9 bits of access modes
+    SemInfo() = new(0,0,0,0,0,0,0,0,0)
+end
+
+mutable struct FileDescriptor
+    fd::Cint
+    function FileDescriptor(fd::Integer)
+        obj = new(fd)
+        finalizer(obj, _destroy)
+        return obj
+    end
+end
+
+abstract type MemoryBlock end
+
+mutable struct SharedMemory{T<:Union{String,ShmId}} <: MemoryBlock
+    ptr::Ptr{Void} # mapped address of shared memory segment
+    len::Int       # size of shared memory segment (in bytes)
+    volatile::Bool # true if shared memory is volatile (only for the creator)
+    id::T          # identifier of shared memory segment
+    function SharedMemory{T}(ptr::Ptr{Void},
+                             len::Integer,
+                             volatile::Bool,
+                             id::T) where {T<:Union{String,ShmId}}
+        obj = new(ptr, len, volatile, id)
+        finalizer(obj, _destroy)
+        return obj
+    end
+end
+
+struct WrappedArray{T,N,M} <: DenseArray{T,N}
+    # All members shall be considered as private.
+    arr::Array{T,N}  # wrapped Julia array
+    mem::M           # object providing the memory
+    function WrappedArray{T,N,M}(ptr::Ptr{T},
+                                 dims::Union{Integer,NTuple{N,<:Integer}},
+                                 mem::M) where {T,N,M}
+        arr = unsafe_wrap(Array, ptr, dims, false)
+        return new{T,N,M}(arr, mem)
+    end
+end
+
+const WrappedVector{T,M} = WrappedArray{T,1,M}
+const WrappedMatrix{T,M} = WrappedArray{T,2,M}
+
+const ShmArray{T,N,M<:SharedMemory} = WrappedArray{T,N,M}
+const ShmVector{T,M} = ShmArray{T,1,M}
+const ShmMatrix{T,M} = ShmArray{T,2,M}
