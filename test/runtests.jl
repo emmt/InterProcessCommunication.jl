@@ -172,7 +172,7 @@ end
         id = shmid(A)
         if isa(id, ShmId)
             info = ShmInfo(id)
-            @test info.segsiz ≥ sizeof(A) + 64
+            @test info.segsz ≥ sizeof(A) + 64
         end
         B = WrappedArray(id; readonly=false)
         C = WrappedArray(id; readonly=true)
