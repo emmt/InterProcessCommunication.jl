@@ -37,21 +37,61 @@ Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
 Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
     convert(Ptr{T}, obj.ptr)
 
+@testset "Low Level Functions   " begin
+    path = "/tmp"
+    fd = open(IPC.FileDescriptor, path, "r")
+    @test fd.fd ≥ 0
+    close(fd)
+    @test fd.fd == -1
+end
+
+@testset "BSD System V Keys     " begin
+    path = "/tmp"
+    key1 = IPC.Key(path, '1')
+    key2 = IPC.Key(key1.value)
+    @test key1 == key2
+    shmds = ShmInfo()
+    semds = IPC.SemInfo()
+end
+
 @testset "Wrapped Arrays        " begin
     T = Float32
     dims = (5,6)
     buf = DynamicMemory(sizeof(T)*prod(dims))
     A = WrappedArray(buf, T, dims)
-    @test ndims(A) == 2
+    B = WrappedArray(buf) # indexable byte buffer
+    C = WrappedArray(buf, T) # indexable byte buffer
+    D = WrappedArray(buf, b -> (T, dims, 0)) # all parameters provided by a function
+    n = prod(dims)
+    @test ndims(A) == ndims(D) == length(dims)
     @test size(A) == dims
-    @test size(A,1) == dims[1] && size(A,2) == dims[2]
-    @test eltype(A) == T
+    @test all(size(A,i) == size(D,i) == dims[i] for i in 1:length(dims))
+    @test eltype(A) == eltype(C) == eltype(D) == T
     @test Base.elsize(A) == Base.sizeof(T)
-    @test sizeof(A) == sizeof(buf)
-    @test pointer(A) == pointer(buf)
+    @test length(A) == length(C) == div(length(B), sizeof(T)) == length(D) == n
+    @test sizeof(A) == sizeof(B) == sizeof(C) == sizeof(D) == sizeof(buf)
+    @test pointer(A) == pointer(B) == pointer(C) == pointer(D) == pointer(buf)
     @test isa(A.arr, Array{T,length(dims)})
     A[:] = 1:length(A)
     @test A[1] == 1 && A[end] == prod(dims)
+    @test all(A[i] == i for i in 1:n)
+    @test all(C[i] == i for i in 1:n)
+    @test all(D[i] == i for i in 1:n)
+    B[:] = 0
+    @test all(A[i] == 0 for i in 1:n)
+    C[:] = randn(T, n)
+    flag = true
+    for i in eachindex(A, D)
+        if A[i] != D[i]
+            flag = false
+        end
+    end
+    @test flag
+    B[:] = 0
+    A[2,3] = 23
+    A[3,2] = 32
+    @test D[2,3] == 23 && D[3,2] == 32
+
 end
 
 @testset "Shared Memory (Sys. V)" begin
