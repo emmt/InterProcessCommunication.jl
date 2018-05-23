@@ -53,14 +53,30 @@ number of available bytes.  Furthermore, this memory is assumed to be available
 at least until object `mem` is reclaimed by the garbage collector.
 
 
+## Shared Memory Arrays
+
+```julia
+WrappedArray(id, T, dims; perms=0o600, volatile=true)
+```
+
+creates a new wrapped array whose elements (and a header) are stored in shared
+meory identified by `id` (see [`SharedMemory`](@ref) for a description of `id`
+and for keywords).  To retrieve this array in another process, just do:
+
+```julia
+WrappedArray(id; readonly=false)
+```
+
+
 ## See Also
 
-[`pointer`](@ref), [`sizeof`](@ref), [`Base.datatype_alignment`](@ref).
+[`pointer`](@ref), [`sizeof`](@ref), [`Base.datatype_alignment`](@ref),
+[`SharedMemory`](@ref).
 
 """
 function WrappedArray(mem::M, ::Type{T} = UInt8;
                       offset::Integer = 0)::WrappedArray{T,1,M} where {M,T}
-    ptr, siz = _check_wrap_array_arguments(mem, T, offset)
+    ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     siz ≥ sizeof(T) ||
         throw(ArgumentError("insufficient memory for at least one element"))
     number = div(siz, sizeof(T))
@@ -72,7 +88,7 @@ WrappedArray(mem::M, ::Type{T}, dims::Integer...; kwds...) where {M,T} =
 
 function WrappedArray(mem::M, ::Type{T}, dims::NTuple{N,<:Integer};
                       offset::Integer = 0)::WrappedArray{T,N,M} where {T,N,M}
-    ptr, siz = _check_wrap_array_arguments(mem, T, offset)
+    ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     number = checkdims(dims)
     siz ≥ sizeof(T)*number ||
         throw(ArgumentError("insufficient memory for array"))
@@ -88,8 +104,35 @@ function WrappedArray(mem, dec::Function)
     return WrappedArray(mem, T, dims; offset = offset)
 end
 
-function _check_wrap_array_arguments(mem::M, ::Type{T},
-                                     offset::Integer) where {M,T}
+function WrappedArray(id::Union{AbstractString,ShmId,Key},
+                      ::Type{T}, dims::Vararg{<:Integer,N}; kwds...) where {T,N}
+    return WrappedArray(id, T, convert(NTuple{N,Int}, dims); kwds...)
+end
+
+function WrappedArray(id::Union{AbstractString,ShmId,Key},
+                      ::Type{T}, dims::NTuple{N,<:Integer}; kwds...) where {T,N}
+    return WrappedArray(id, T, convert(NTuple{N,Int}, dims); kwds...)
+end
+
+function WrappedArray(id::Union{AbstractString,ShmId,Key},
+                      ::Type{T}, dims::NTuple{N,Int};
+                      kwds...) where {T,N}
+    num = checkdims(dims)
+    off = _wrapped_array_header_size(N)
+    siz = off + sizeof(T)*num
+    mem = SharedMemory(id, siz; kwds...)
+    write(mem, WrappedArrayHeader, T, dims)
+    return WrappedArray(mem, T, dims; offset=off)
+end
+
+function WrappedArray(id::Union{AbstractString,ShmId,Key}; kwds...)
+    mem = SharedMemory(id; kwds...)
+    T, dims, off = read(mem, WrappedArrayHeader)
+    return WrappedArray(mem, T, dims; offset=off)
+end
+
+function _check_wrapped_array_arguments(mem::M, ::Type{T},
+                                        offset::Integer) where {M,T}
     offset ≥ 0 || throw(ArgumentError("offset must be nonnegative"))
     isbits(T) || throw(ArgumentError("illegal element type ($T)"))
     ptr = pointer(mem)
@@ -170,3 +213,132 @@ Base.start(iter::WrappedArray) = start(iter.arr)
 Base.next(iter::WrappedArray, state) = next(iter.arr, state)
 Base.done(iter::WrappedArray, state) = done(iter.arr, state)
 
+#------------------------------------------------------------------------------
+# WRAPPED ARRAYS WITH HEADER
+
+# Magic number
+const _WA_MAGIC = UInt32(0x57412D31) # "WA-1" = Wrapped Array version 1
+
+# We require at least 64 bytes (512 bits) alignment for the first element of
+# the array (to warrant that SIMD vectors are correctly aligned), this value is
+# equal to the constant JL_CACHE_BYTE_ALIGNMENT used for the elements of Julia
+# arrays.
+const _WA_ALIGN = 64
+
+const _WA_TYPES = (( 1, Int8,       "signed 8-bit integer"),
+                   ( 2, UInt8,      "unsigned 8-bit integer"),
+                   ( 3, Int16,      "signed 16-bit integer"),
+                   ( 4, UInt16,     "unsigned 16-bit integer"),
+                   ( 5, Int32,      "signed 32-bit integer"),
+                   ( 6, UInt32,     "unsigned 32-bit integer"),
+                   ( 7, Int64,      "signed 64-bit integer"),
+                   ( 8, UInt64,     "unsigned 64-bit integer"),
+                   ( 9, Float32,    "32-bit floating-point"),
+                   (10, Float64,    "64-bit floating-point"),
+                   (11, Complex64,  "64-bit complex"),
+                   (12, Complex128, "128-bit complex"))
+
+const _WA_ETYPES = DataType[T for (i, T, str) in _WA_TYPES]
+const _WA_DESCRS = String[str for (i, T, str) in _WA_TYPES]
+const _WA_IDENTS = Dict(T => i for (i, T, str) in _WA_TYPES)
+
+
+"""
+```julia
+WrappedArrayHeader(T, N)
+```
+
+yields a structure `WrappedArrayHeader` instanciated for an array with `N`
+dimensions and whose element type is `T`.
+
+
+## Possible Usages
+
+```julia
+read(src, WrappedArrayHeader) -> T, dims, off
+```
+
+reads wrapped array header in `src` and yields the element type `T`, dimensions
+`dims` and offset `off` of the first array element relative to the the base of
+`src`.
+
+```julia
+write(dst, WrappedArrayHeader, T, dims)
+```
+
+writes wrapped array header in `dst` for element type `T` and dimensions
+`dims`.
+
+
+```julia
+WrappedArray(mem, x -> read(x, WrappedArrayHeader)) -> arr
+```
+
+retrieves a wrapped array `arr` whose header and elements are stored in the
+memory provided by object `mem`.
+
+"""
+function WrappedArrayHeader(::Type{T}, N::Int) where {T}
+    N ≥ 1 || throw(ArgumentError("illegal number of dimensions ($N)"))
+    haskey(_WA_IDENTS, T) || throw(ArgumentError("unsupported data type ($T)"))
+    off = _wrapped_array_header_size(N)
+    return WrappedArrayHeader(_WA_MAGIC, _WA_IDENTS[T], N, off)
+end
+
+_wrapped_array_header_size(N::Integer) =
+    roundup(sizeof(WrappedArrayHeader) + N*sizeof(Int64), _WA_ALIGN)
+
+WrappedArrayHeader(::Type{T}, N::Integer) where {T} =
+    WrappedArrayHeader(T, convert(Int, N))
+
+function Base.write(mem, ::Type{WrappedArrayHeader},
+                    ::Type{T}, dims::Vararg{<:Integer,N}) where {T,N}
+    write(mem, WrappedArrayHeader, T, convert(NTuple{N,Int}, dims))
+end
+
+function Base.write(mem, ::Type{WrappedArrayHeader},
+                    ::Type{T}, dims::NTuple{N,<:Integer}) where {T,N}
+    write(mem, WrappedArrayHeader, T, convert(NTuple{N,Int}, dims))
+end
+
+function Base.write(mem, ::Type{WrappedArrayHeader},
+                    ::Type{T}, dims::NTuple{N,Int}) where {T,N}
+    # Check arguments, then write header and dimensions.
+    hdr = WrappedArrayHeader(T, N)
+    off = hdr.offset
+    siz = sizeof(mem)
+    ptr = pointer(mem)
+    num = checkdims(dims)
+    siz ≥ off + sizeof(T)*num ||
+        throw(ArgumentError("insufficient size of memory block"))
+    unsafe_store!(convert(Ptr{WrappedArrayHeader}, ptr), hdr)
+    addr = convert(Ptr{Int64}, ptr + sizeof(WrappedArrayHeader))
+    for i in 1:N
+        unsafe_store!(addr, dims[i], i)
+    end
+end
+
+function Base.read(mem, ::Type{WrappedArrayHeader})
+    siz = sizeof(mem)
+    ptr = pointer(mem)
+    siz ≥ sizeof(WrappedArrayHeader) ||
+        throw(ArgumentError("insufficient size of memory block for header"))
+    hdr = unsafe_load(convert(Ptr{WrappedArrayHeader}, ptr))
+    hdr.magic == _WA_MAGIC ||
+        error("invalid magic number (0x$(hex(hdr.magic)))")
+    etype = Int(hdr.etype)
+    1 ≤ etype ≤ length(_WA_ETYPES) ||
+        error("invalid element type identifier ($etype)")
+    ndims = Int(hdr.ndims)
+    1 ≤ ndims || error("invalid number of dimensions ($ndims)")
+    off = Int(hdr.offset)
+    off == _wrapped_array_header_size(ndims) ||
+        error("invalid offset ($off)")
+    addr = convert(Ptr{Int64}, ptr + sizeof(WrappedArrayHeader))
+    dims = ntuple(i -> convert(Int, unsafe_load(addr, i)), ndims)
+    num = checkdims(dims)
+    T = _WA_ETYPES[etype]
+    siz ≥ off + sizeof(T)*num ||
+        error("insufficient size of memory block ($(Int(siz)) < $(Int(off + sizeof(T)*num)))")
+    return T, dims, off
+end

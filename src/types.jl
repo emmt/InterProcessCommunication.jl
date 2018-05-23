@@ -105,3 +105,27 @@ const WrappedMatrix{T,M} = WrappedArray{T,2,M}
 const ShmArray{T,N,M<:SharedMemory} = WrappedArray{T,N,M}
 const ShmVector{T,M} = ShmArray{T,1,M}
 const ShmMatrix{T,M} = ShmArray{T,2,M}
+
+# Header for saving a minimal description of a wrapped array.  The layout is:
+#
+#   Name   Size
+#   --------------
+#   magic  4 bytes
+#   etype  2 bytes
+#   ndims  2 bytes
+#   offset 8 bytes
+#
+# This header is supposed to be directly followed by the array dimensions
+# stored as 8-byte signed integers.
+#
+struct WrappedArrayHeader
+    magic::UInt32 # magic number to check correctness
+    etype::UInt16 # identifier of element type
+    ndims::UInt16 # number of dimensions
+    offset::Int64 # total size of header
+end
+@assert rem(sizeof(WrappedArrayHeader), sizeof(Int64)) == 0
+
+# FIXME: too bad that the following construction does not work to simplify
+#        writing method signatures:
+# const Dimensions{N} = Union{Vararg{<:Integer,N},Tuple{Vararg{<:Integer,N}}}
