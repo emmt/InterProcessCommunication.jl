@@ -50,7 +50,6 @@ end
     dims = (5,6)
     buf = DynamicMemory(sizeof(T)*prod(dims))
     A = IPC.WrappedArray(buf, T, dims)
-
     @test ndims(A) == 2
     @test size(A) == dims
     @test size(A,1) == dims[1] && size(A,2) == dims[2]
@@ -92,6 +91,9 @@ end
     @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
     @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
     @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
+    @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+                Aptr, 0, len) == Aptr
+    @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
 end
 
 @testset "Shared Memory (POSIX) " begin
@@ -121,6 +123,9 @@ end
     @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
     @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
     @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
+    @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+                Aptr, 0, len) == Aptr
+    @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
 end
 
 end
