@@ -9,6 +9,7 @@ clean:
 	rm -f *~ core gencode
 
 gencode: gencode.c
+	LANG=C man fstat | cat
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o "$@" "$<" $(LDFLAGS)
 
 ../src/constants.jl: constants-header.jl gencode

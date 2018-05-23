@@ -148,9 +148,13 @@ int main(int argc, char* argv[])
   DEF_CONST(IPC_EXCL, "  = Cint(0o%04o)");
 
   fprintf(output, "\n# Flags for `shmdt`:\n");
+#ifdef SHM_EXEC
   DEF_CONST(SHM_EXEC, "   = Cint(%d)");
+#endif
   DEF_CONST(SHM_RDONLY, " = Cint(%d)");
-  /*DEF_CONST(SHM_REMAP, "  = Cint(%d)");*/
+#ifdef SHM_EXEC
+  DEF_CONST(SHM_REMAP, "  = Cint(%d)");
+#endif
 
   fprintf(output, "\n# Constants for `mmap`, `msync`, etc.:\n");
   DEF_CONST(PROT_NONE, "     = Cint(%d)");
