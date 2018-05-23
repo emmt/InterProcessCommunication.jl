@@ -92,7 +92,7 @@ struct WrappedArray{T,N,M} <: DenseArray{T,N}
     arr::Array{T,N}  # wrapped Julia array
     mem::M           # object providing the memory
     function WrappedArray{T,N,M}(ptr::Ptr{T},
-                                 dims::Union{Integer,NTuple{N,<:Integer}},
+                                 dims::NTuple{N,<:Integer},
                                  mem::M) where {T,N,M}
         arr = unsafe_wrap(Array, ptr, dims, false)
         return new{T,N,M}(arr, mem)

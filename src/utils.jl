@@ -245,11 +245,11 @@ makedims(dims::NTuple{N,Integer}) where {N} =
 makedims(dims::AbstractVector{<:Integer}) =
     ntuple(i -> Int(dims[i]), length(dims))
 
-function checkdims(dims::NTuple{N,Int}) where {N}
-    number = 1
+function checkdims(dims::NTuple{N,<:Integer}) where {N}
+    number = one(Int)
     for i in 1:N
         dims[i] ≥ 1 || error("invalid dimension (dims[$i] = $(dims[i]))")
-        number *= dims[i]
+        number *= convert(Int, dims[i])
     end
     return number
 end

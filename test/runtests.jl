@@ -30,26 +30,18 @@ function _destroy(obj::DynamicMemory)
 end
 
 Base.sizeof(obj::DynamicMemory) = obj.len
-Base.convert(::Type{P}, obj::DynamicMemory) where {P<:Ptr} =
-    convert(P, obj.ptr)
-Base.unsafe_convert(::Type{P}, obj::DynamicMemory) where {P<:Ptr} =
-    unsafe_convert(P, obj.ptr)
 Base.pointer(obj::DynamicMemory) = obj.ptr
-
-function IPC.WrappedArray(buf::DynamicMemory, ::Type{T},
-                          dims::Union{Integer,NTuple{N,<:Integer}}) where {T,N}
-    minimum(dims) ≥ 1 || throw(ArgumentError("invalid dimension(s)"))
-    sizeof(buf) ≥ sizeof(T)*prod(dims) ||
-        throw(ArgumentError("buffer is too small"))
-    return IPC.WrappedArray{T,length(dims),typeof(buf)}(convert(Ptr{T}, buf),
-                                                        dims, buf)
-end
+Base.convert(::Type{Ptr{Void}}, obj::DynamicMemory) = obj.ptr
+Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
+    convert(Ptr{T}, obj.ptr)
+Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
+    convert(Ptr{T}, obj.ptr)
 
 @testset "Wrapped Arrays        " begin
     T = Float32
     dims = (5,6)
     buf = DynamicMemory(sizeof(T)*prod(dims))
-    A = IPC.WrappedArray(buf, T, dims)
+    A = WrappedArray(buf, T, dims)
     @test ndims(A) == 2
     @test size(A) == dims
     @test size(A,1) == dims[1] && size(A,2) == dims[2]
