@@ -1,5 +1,10 @@
 # Inter-Process Communication for Julia
 
+[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md)
+[![Build Status](https://travis-ci.org/emmt/IPC.jl.svg?branch=master)](https://travis-ci.org/emmt/IPC.jl)
+[![Coverage Status](https://coveralls.io/repos/emmt/IPC.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/IPC.jl?branch=master)
+[![codecov.io](http://codecov.io/github/emmt/IPC.jl/coverage.svg?branch=master)](http://codecov.io/github/emmt/IPC.jl?branch=master)
+
 Julia has already many methods for inter-process communication (IPC): sockets,
 memory mapped files, etc.  You may however want to have Julia interacts with
 other processes or threads by means of System V IPC shared memory, semaphores,
