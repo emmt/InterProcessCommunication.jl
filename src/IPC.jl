@@ -13,7 +13,8 @@ __precompile__(true)
 
 module IPC
 
-import Base: SystemError, lock, unlock, trylock, timedwait, broadcast
+import Base: SystemError, convert, unsafe_convert,
+    lock, unlock, trylock, timedwait, broadcast
 
 export
     CLOCK_MONOTONIC,

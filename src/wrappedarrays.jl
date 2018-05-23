@@ -52,13 +52,19 @@ Base.copy(obj::WrappedArray) = copy(obj.arr)
 Base.copy!(dest::WrappedArray, src::AbstractArray) =
     (copy!(dest.arr, src); dest)
 
-Base.pointer(obj::WrappedArray) = pointer(obj.arr)
-
 Base.reinterpret(::Type{T}, obj::WrappedArray) where {T} =
     reinterpret(T, obj.arr)
 
 Base.reshape(obj::WrappedArray, dims::Tuple{Vararg{Int}}) =
     reshape(obj.arr, dims)
+
+# Extend `Base.unsafe_convert` for `ccall`.  Note that this also make `pointer`
+# applicable and that the 2 following definitions are needed to avoid
+# ambiguities and cover all cases.
+unsafe_convert(::Type{Ptr{T}}, obj::WrappedArray{T}) where {T} =
+    unsafe_convert(Ptr{T}, obj.arr)
+unsafe_convert(::Type{Ptr{S}}, obj::WrappedArray{T}) where {S,T} =
+    unsafe_convert(Ptr{S}, obj.arr)
 
 # Make a wrapped array iterable:
 Base.start(iter::WrappedArray) = start(iter.arr)
