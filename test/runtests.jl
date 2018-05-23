@@ -62,40 +62,38 @@ end
     @test A[1] == 1 && A[end] == prod(dims)
 end
 
-if ! is_apple()
-    @testset "Shared Memory (Sys. V)" begin
-        T = Int
-        n = 10
-        len = n*sizeof(Int)
-        A = SharedMemory(IPC.PRIVATE, len)
-        id = shmid(A)
-        @test isa(id, ShmId)
-        @test id == ShmId(A)
-        @test "$id" == "ShmId($(dec(id.value)))"
-        @test id.value == convert(Int64, id)
-        @test id.value == convert(Int32, id)
-        B = SharedMemory(id; readonly=false)
-        C = SharedMemory(id; readonly=true)
-        @test shmid(A) == shmid(B) == shmid(C)
-        @test sizeof(A) == sizeof(B) == sizeof(C) == len
-        Aptr = convert(Ptr{T},pointer(A))
-        Bptr = convert(Ptr{T},pointer(B))
-        Cptr = convert(Ptr{T},pointer(C))
-        for i in 1:n
-            unsafe_store!(Aptr,i,i)
-        end
-        @test all(unsafe_load(Bptr, i) == i for i in 1:n)
-        @test all(unsafe_load(Cptr, i) == i for i in 1:n)
-        for i in 1:n
-            unsafe_store!(Bptr,-i,i)
-        end
-        @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
-        @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
-        @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
-        @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
-                    Aptr, 0, len) == Aptr
-        @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
+@testset "Shared Memory (Sys. V)" begin
+    T = Int
+    n = 10
+    len = n*sizeof(Int)
+    A = SharedMemory(IPC.PRIVATE, len)
+    id = shmid(A)
+    @test isa(id, ShmId)
+    @test id == ShmId(A)
+    @test "$id" == "ShmId($(dec(id.value)))"
+    @test id.value == convert(Int64, id)
+    @test id.value == convert(Int32, id)
+    B = SharedMemory(id; readonly=false)
+    C = SharedMemory(id; readonly=true)
+    @test shmid(A) == shmid(B) == shmid(C)
+    @test sizeof(A) == sizeof(B) == sizeof(C) == len
+    Aptr = convert(Ptr{T},pointer(A))
+    Bptr = convert(Ptr{T},pointer(B))
+    Cptr = convert(Ptr{T},pointer(C))
+    for i in 1:n
+        unsafe_store!(Aptr,i,i)
     end
+    @test all(unsafe_load(Bptr, i) == i for i in 1:n)
+    @test all(unsafe_load(Cptr, i) == i for i in 1:n)
+    for i in 1:n
+        unsafe_store!(Bptr,-i,i)
+    end
+    @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
+    @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
+    @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
+    @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+                Aptr, 0, len) == Aptr
+    @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
 end
 
 @testset "Shared Memory (POSIX) " begin
