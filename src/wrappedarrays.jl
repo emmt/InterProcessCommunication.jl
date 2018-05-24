@@ -78,7 +78,7 @@ function WrappedArray(mem::M, ::Type{T} = UInt8;
                       offset::Integer = 0)::WrappedArray{T,1,M} where {M,T}
     ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     siz ≥ sizeof(T) ||
-        throw(ArgumentError("insufficient memory for at least one element"))
+        throw_argument_error("insufficient memory for at least one element")
     number = div(siz, sizeof(T))
     return WrappedArray{T,1,M}(ptr, (number,), mem)
 end
@@ -91,7 +91,7 @@ function WrappedArray(mem::M, ::Type{T}, dims::NTuple{N,<:Integer};
     ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     number = checkdims(dims)
     siz ≥ sizeof(T)*number ||
-        throw(ArgumentError("insufficient memory for array"))
+        throw_argument_error("insufficient memory for array")
     return WrappedArray{T,N,M}(ptr, dims, mem)
 end
 
@@ -133,13 +133,13 @@ end
 
 function _check_wrapped_array_arguments(mem::M, ::Type{T},
                                         offset::Integer) where {M,T}
-    offset ≥ 0 || throw(ArgumentError("offset must be nonnegative"))
-    isbits(T) || throw(ArgumentError("illegal element type ($T)"))
+    offset ≥ 0 || throw_argument_error("offset must be nonnegative")
+    isbits(T) || throw_argument_error("illegal element type ($T)")
     ptr, len = get_memory_parameters(mem)
     align = Base.datatype_alignment(T)
     addr = ptr + offset
     rem(convert(Int, addr), align) == 0 ||
-        throw(ArgumentError("base address must be a multiple of $align bytes"))
+        throw_argument_error("base address must be a multiple of $align bytes")
     return (convert(Ptr{T}, addr),
             convert(Int, len) - convert(Int, offset))
 end
@@ -272,8 +272,8 @@ memory provided by object `mem`.
 
 """
 function WrappedArrayHeader(::Type{T}, N::Int) where {T}
-    N ≥ 1 || throw(ArgumentError("illegal number of dimensions ($N)"))
-    haskey(_WA_IDENTS, T) || throw(ArgumentError("unsupported data type ($T)"))
+    N ≥ 1 || throw_argument_error("illegal number of dimensions ($N)")
+    haskey(_WA_IDENTS, T) || throw_argument_error("unsupported data type ($T)")
     off = _wrapped_array_header_size(N)
     return WrappedArrayHeader(_WA_MAGIC, _WA_IDENTS[T], N, off)
 end
@@ -303,7 +303,7 @@ function Base.write(mem, ::Type{WrappedArrayHeader},
     ptr = pointer(mem)
     num = checkdims(dims)
     siz ≥ off + sizeof(T)*num ||
-        throw(ArgumentError("insufficient size of memory block"))
+        throw_argument_error("insufficient size of memory block")
     unsafe_store!(convert(Ptr{WrappedArrayHeader}, ptr), hdr)
     addr = convert(Ptr{Int64}, ptr + sizeof(WrappedArrayHeader))
     for i in 1:N
@@ -315,7 +315,7 @@ function Base.read(mem, ::Type{WrappedArrayHeader})
     siz = sizeof(mem)
     ptr = pointer(mem)
     siz ≥ sizeof(WrappedArrayHeader) ||
-        throw(ArgumentError("insufficient size of memory block for header"))
+        throw_argument_error("insufficient size of memory block for header")
     hdr = unsafe_load(convert(Ptr{WrappedArrayHeader}, ptr))
     hdr.magic == _WA_MAGIC ||
         error("invalid magic number (0x$(hex(hdr.magic)))")

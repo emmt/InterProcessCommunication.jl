@@ -74,7 +74,7 @@ function SharedMemory(key::Key, len::Integer;
                       volatile::Bool = true)::SharedMemory{ShmId}
     # Create a new System V shared memory segment with given size and, at
     # least, read and write access for the caller.
-    len ≥ 1 || throw(ArgumentError("bad number of bytes ($len)"))
+    len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
     flags = maskmode(perms) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
     id = _shmget(key.value, len, flags)
     if id < 0
@@ -120,7 +120,7 @@ function SharedMemory(name::AbstractString,
     elseif usermode == S_IRUSR
         flags |= O_RDONLY
     else
-        throw(ArgumentError("at least `S_IRUSR` must be set in `perms`"))
+        throw_argument_error("at least `S_IRUSR` must be set in `perms`")
     end
     return SharedMemory(name, flags, mode, len, volatile)
 end
@@ -150,7 +150,7 @@ function SharedMemory(name::AbstractString,
     local nbytes::Int = 0
     if create
         # Set the size of the new shared memory object.
-        len ≥ 1 || throw(ArgumentError("bad number of bytes ($len)"))
+        len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
         if _ftruncate(fd, len) != SUCCESS
             errno = Libc.errno()
             _close(fd)

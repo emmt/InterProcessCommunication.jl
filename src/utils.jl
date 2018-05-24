@@ -53,7 +53,7 @@ Key(path::AbstractString, proj::Union{Char,Integer}) =
     Key(path, convert(Cint, proj))
 
 function Key(path::AbstractString, proj::Cint)
-    1 ≤ proj ≤ 255 || throw(ArgumentError("`proj` must be in the range 1:255"))
+    1 ≤ proj ≤ 255 || throw_argument_error("`proj` must be in the range 1:255")
     key = ccall(:ftok, _typeof_key_t, (Cstring, Cint), path, proj)
     systemerror("ftok", key == -1)
     return Key(key)
@@ -245,6 +245,9 @@ throw_system_error(msg::AbstractString) =
 throw_system_error(msg::AbstractString, code::Integer) =
     throw(SystemError(msg, code))
 
+throw_argument_error(msg::AbstractString) =
+    throw(ArgumentError(msg))
+
 makedims(dims::NTuple{N,Int}) where {N} = dims
 makedims(dims::NTuple{N,Integer}) where {N} =
     ntuple(i -> Int(dims[i]), N)
@@ -280,12 +283,12 @@ See also: [`pointer`](@ref), [`sizeof`](@ref).
 function get_memory_parameters(mem)::Tuple{Ptr{Void},Int}
     siz = sizeof(mem)
     isa(siz, Integer) ||
-        throw(ArgumentError("illegal type for `sizeof(mem) -> $(typeof(siz))`"))
+        throw_argument_error("illegal type for `sizeof(mem) -> $(typeof(siz))`")
     siz ≥ 0 ||
-        throw(ArgumentError("invalid value for `sizeof(mem) -> $siz`"))
+        throw_argument_error("invalid value for `sizeof(mem) -> $siz`")
     ptr = pointer(mem)
     isa(ptr, Ptr) ||
-        throw(ArgumentError("illegal type for `pointer(mem) -> $(typeof(ptr))`"))
+        throw_argument_error("illegal type for `pointer(mem) -> $(typeof(ptr))`")
     return (convert(Ptr{Void}, ptr), convert(Int, siz))
 end
 

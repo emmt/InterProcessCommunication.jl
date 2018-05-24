@@ -169,15 +169,15 @@ Base.typemax(::Type{Semaphore}) = SEM_VALUE_MAX
 
 function _check_semaphore_value(value::Integer)
     typemin(Semaphore) ≤ value ≤ typemax(Semaphore) ||
-        throw(ArgumentError("invalid semaphore value ($value)"))
+        throw_argument_error("invalid semaphore value ($value)")
     return convert(Cuint, value)
 end
 
 function _get_semaphore_address(mem, off::Integer)::Ptr{Void}
-    off ≥ 0 || throw(ArgumentError("offset must be nonnegative ($off)"))
+    off ≥ 0 || throw_argument_error("offset must be nonnegative ($off)")
     ptr, siz = get_memory_parameters(mem)
     siz ≥ off + _sizeof_sem_t ||
-        throw(ArgumentError("not enough memory at given offset"))
+        throw_argument_error("not enough memory at given offset")
     # FIXME: check alignment?
     return ptr + off
 end
