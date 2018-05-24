@@ -262,8 +262,8 @@ than zero, then the decrement proceeds, and the function returns, immediately.
 If the semaphore currently has the value zero, then the call blocks until
 either it becomes possible to perform the decrement (i.e., the semaphore value
 rises above zero), or the limit of `secs` seconds expires (in which case an
-instance of `IPC.TimeoutError` is thrown), or a signal handler interrupts the
-call (in which case an instance of `InterruptException` is thrown).
+instance of `TimeoutError` is thrown), or a signal handler interrupts the call
+(in which case an instance of `InterruptException` is thrown).
 
 See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),  [`trywait`](@ref).
 
@@ -291,10 +291,10 @@ end
 trywait(sem) -> boolean
 ```
 
-attempts to immediately decrements (locks) the semaphore `sem` returning `true`
+attempts to immediately decrement (lock) the semaphore `sem` returning `true`
 if successful.  If the decrement cannot be immediately performed, then the call
-returns `false`.  If an interruption is received or if an unexpected error is
-returned, an exception is thrown (`InterruptException` or `SystemError`
+returns `false`.  If an interruption is received or if an unexpected error
+occurs, an exception is thrown (`InterruptException` or `SystemError`
 repectively).
 
 See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),  [`timedwait`](@ref).
