@@ -44,8 +44,13 @@ Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
         write(io, data)
     end
     f = open(IPC.FileDescriptor, path, "r")
-    @test filesize(f) == sizeof(data)
     @test fd(f) ≥ 0
+    @test filesize(f) == sizeof(data)
+    @test position(f) == 0
+    @test seekend(f) == position(f) == sizeof(data)
+    @test seekstart(f) == position(f) == 0
+    pos = (sizeof(data)>>1)
+    @test seek(f, pos) == position(f) == pos
     close(f)
     @test fd(f) == -1
 end

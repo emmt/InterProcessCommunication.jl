@@ -66,13 +66,9 @@ mutable struct SemInfo
     SemInfo() = new(0,0,0,0,0,0,0,0,0)
 end
 
+# Must be mutable to allow for finalizing.
 mutable struct FileDescriptor
     fd::Cint
-    function FileDescriptor(fd::Integer)
-        obj = new(fd)
-        finalizer(obj, _destroy)
-        return obj
-    end
 end
 
 abstract type MemoryBlock end

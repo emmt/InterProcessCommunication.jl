@@ -27,7 +27,8 @@ maskmode(mode::Integer) :: _typeof_mode_t =
 
 @doc @doc(maskmode) MASKMODE
 
-getpid() = ccall(:getpid, _typeof_pid_t, ())
+# FIXME: `getpid` already provided by Julia.
+# getpid() = ccall(:getpid, _typeof_pid_t, ())
 getppid() = ccall(:getppid, _typeof_pid_t, ())
 
 _open(path::AbstractString, flags::Integer, mode::Integer) =
@@ -133,13 +134,13 @@ _sem_destroy(sem::Ptr{Void}) =
 
 Base.stat(obj::FileDescriptor) = stat(obj.fd)
 
-Base.length(obj::FileDescriptor) = filesize(obj)
-
 function Base.open(::Type{FileDescriptor}, path::AbstractString,
                    flags::Integer, mode::Integer=DEFAULT_MODE)
     fd = _open(path, flags, mode)
     systemerror("open", fd < 0)
-    return FileDescriptor(fd)
+    obj = FileDescriptor(fd)
+    finalizer(obj, _close)
+    return obj
 end
 
 function Base.open(::Type{FileDescriptor}, path::AbstractString,
@@ -176,15 +177,42 @@ function Base.close(obj::FileDescriptor)
         obj.fd = -1
         systemerror("close", _close(fd) == -1)
     end
-    nothing
 end
 
-function _destroy(obj::FileDescriptor)
-    # File descriptor may have already been closed.
-    if obj.fd != -1
+function _close(obj::FileDescriptor)
+    if (fd = obj.fd) != -1
+        obj.fd = -1
         _close(fd)
-        if PARANOID
-            obj.fd = -1
-        end
     end
 end
+
+Base.fd(obj::FileDescriptor) = obj.fd
+
+function Base.position(obj::FileDescriptor)
+    off = _lseek(fd(obj), 0, SEEK_CUR)
+    systemerror("lseek", off < 0)
+    return off
+end
+
+function Base.seek(obj::FileDescriptor, pos::Integer)
+    off = _lseek(fd(obj), pos, SEEK_SET)
+    systemerror("lseek", off < 0)
+    return off
+end
+
+Base.seekstart(obj::FileDescriptor) = seek(obj, 0)
+
+function Base.seekend(obj::FileDescriptor)
+    off = _lseek(fd(obj), 0, SEEK_END)
+    systemerror("lseek", off < 0)
+    return off
+end
+
+function Base.skip(obj::FileDescriptor, offset::Integer)
+    off = _lseek(fd(obj), offset, SEEK_CUR)
+    systemerror("lseek", off < 0)
+    return off
+end
+
+Base.isopen(obj::FileDescriptor) = fd(obj) ≥ 0
+
