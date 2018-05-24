@@ -31,7 +31,7 @@ mutable struct Mutex
                  buf, C_NULL) != SUCCESS
             # In principle, `pthread_mutex_init` should always return 0.
             Libc.free(buf)
-            throw(SystemError("pthread_mutex_init"))
+            throw_system_error("pthread_mutex_init")
         end
         obj = new(buf)
         finalizer(obj, _destroy)
@@ -57,7 +57,7 @@ mutable struct Condition
         if ccall(:pthread_cond_init, Cint, (Ptr{Void}, Ptr{Void}),
                  buf, C_NULL) != SUCCESS
             Libc.free(buf)
-            throw(SystemError("pthread_cond_init"))
+            throw_system_error("pthread_cond_init")
         end
         obj = new(buf)
         finalizer(obj, _destroy)
@@ -153,5 +153,5 @@ function Base.timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
                    cond.handle, mutex.handle, Ref(abstime))
     status == 0 && return true
     status == Libc.ETIMEDOUT && return false
-    throw(SystemError("pthread_cond_timedwait"))
+    throw_system_error("pthread_cond_timedwait")
 end

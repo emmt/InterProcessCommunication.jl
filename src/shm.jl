@@ -78,7 +78,7 @@ function SharedMemory(key::Key, len::Integer;
     flags = maskmode(perms) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
     id = _shmget(key.value, len, flags)
     if id < 0
-        throw(SystemError("shmget"))
+        throw_system_error("shmget")
     end
 
     # Attach shared memory segment to process address space.
@@ -86,12 +86,12 @@ function SharedMemory(key::Key, len::Integer;
     if ptr == Ptr{Void}(-1)
         errno = Libc.errno()
         _shmctl(id, IPC_RMID, C_NULL)
-        throw(SystemError("shmget", errno))
+        throw_system_error("shmget", errno)
     end
     if volatile && _shmctl(id, IPC_RMID, C_NULL) == -1
         errno = Libc.errno()
         _shmdt(ptr)
-        throw(SystemError("shmctl", errno))
+        throw_system_error("shmctl", errno)
     end
 
     # Instanciate Julia object.
@@ -145,7 +145,7 @@ function SharedMemory(name::AbstractString,
     # Open shared memory and set or get its size.
     fd = _shm_open(name, flags, mode)
     if fd == -1
-        throw(SystemError("shm_open"))
+        throw_system_error("shm_open")
     end
     local nbytes::Int = 0
     if create
@@ -155,7 +155,7 @@ function SharedMemory(name::AbstractString,
             errno = Libc.errno()
             _close(fd)
             _shm_unlink(name)
-            throw(SystemError("ftruncate", errno))
+            throw_system_error("ftruncate", errno)
         end
         nbytes = Int(len)
     else
@@ -180,7 +180,7 @@ function SharedMemory(name::AbstractString,
         if create
             _shm_unlink(name)
         end
-        throw(SystemError("mmap", errno))
+        throw_system_error("mmap", errno)
     end
 
     # File descriptor can be closed.
@@ -190,7 +190,7 @@ function SharedMemory(name::AbstractString,
             _shm_unlink(name)
         end
         _munmap(ptr, len)
-        throw(SystemError("close", errno))
+        throw_system_error("close", errno)
     end
 
     # Return the shared memory object.
@@ -279,7 +279,7 @@ function Base.rm(::Type{SharedMemory}, name::AbstractString)
     if _shm_unlink(name) != SUCCESS
         errno = Libc.errno()
         if errno != Libc.ENOENT
-            throw(SystemError("shm_unlink", errno))
+            throw_system_error("shm_unlink", errno)
         end
     end
 end
@@ -289,7 +289,7 @@ function Base.rm(id::ShmId)
         # Only throw an error if not an already removed shared memory segment.
         errno = Libc.errno()
         if errno != Libc.EIDRM
-            throw(SystemError("shmctl", errno))
+            throw_system_error("shmctl", errno)
         end
     end
 end

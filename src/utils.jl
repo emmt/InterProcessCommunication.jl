@@ -239,6 +239,12 @@ end
 syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
     string(msg," [",Libc.strerror(code),"]")
 
+# The error code is automatically provided for `SystemError`.
+throw_system_error(msg::AbstractString) =
+    throw_system_error(msg, Libc.errno())
+throw_system_error(msg::AbstractString, code::Integer) =
+    throw(SystemError(msg, code))
+
 makedims(dims::NTuple{N,Int}) where {N} = dims
 makedims(dims::NTuple{N,Integer}) where {N} =
     ntuple(i -> Int(dims[i]), N)

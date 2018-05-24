@@ -13,7 +13,7 @@ __precompile__(true)
 
 module IPC
 
-import Base: SystemError, convert, unsafe_convert,
+import Base: convert, unsafe_convert,
     lock, unlock, trylock, timedwait, broadcast
 
 export

@@ -158,7 +158,7 @@ function Base.rm(::Type{Semaphore}, name::AbstractString)
     if _sem_unlink(name) != SUCCESS
         errno = Libc.errno()
         if errno != Libc.ENOENT
-            throw(SystemError("sem_unlink", errno))
+            throw_system_error("sem_unlink", errno)
         end
     end
 end
@@ -246,7 +246,7 @@ function Base.wait(sem::Semaphore)
         if code == Libc.EINTR
             throw(InterruptException())
         else
-            throw(SystemError("sem_wait", code))
+            throw_system_error("sem_wait", code)
         end
     end
     nothing
@@ -280,7 +280,7 @@ function Base.timedwait(sem::Semaphore, secs::Float64)
         elseif code == Libc.ETIMEDOUT
             throw(TimeoutError())
         else
-            throw(SystemError("sem_timedwait", code))
+            throw_system_error("sem_timedwait", code)
         end
     end
     nothing
@@ -311,6 +311,6 @@ function trywait(sem::Semaphore)
     if code == Libc.EINTR
         throw(InterruptException())
     else
-        throw(SystemError("sem_trywait", code))
+        throw_system_error("sem_trywait", code)
     end
 end

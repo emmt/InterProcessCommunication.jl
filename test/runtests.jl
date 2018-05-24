@@ -58,6 +58,7 @@ end
     begin
         name = "/sem-$(getpid())"
         rm(Semaphore, name)
+        @test_throws SystemError Semaphore(name)
         sem1 = Semaphore(name, 0)
         sem2 = Semaphore(name)
         @test sem1[] == Int(sem1)
@@ -129,7 +130,7 @@ end
     gc() # call garbage collector to exercise the finalizers
 end
 
-@testset "Shared Memory (Sys. V)" begin
+@testset "Shared Memory (BSD)   " begin
     begin
         T = Int
         n = 10
@@ -173,6 +174,7 @@ end
         len = n*sizeof(Int)
         name = "/shm-$(getpid())"
         rm(SharedMemory, name)
+        @test_throws SystemError SharedMemory(name)
         A = SharedMemory(name, len)
         id = shmid(A)
         @test isa(id, String)
