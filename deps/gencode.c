@@ -9,6 +9,13 @@
  * Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/mman.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -18,13 +25,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/mman.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
 
 #ifdef __APPLE__
 # define st_atim st_atimespec
@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
   DEF_CONST(MAP_PRIVATE, "   = Cint(%d)");
   DEF_CONST(MAP_ANONYMOUS, " = Cint(%d)"); /* FIXME: non-POSIX? */
   DEF_CONST(MAP_FIXED, "     = Cint(%d)");
-  fprintf(output, "const MAP_FAILED    = Ptr{Void}(-1)\n");
+  fprintf(output, "const MAP_FAILED    = Ptr{Void}(%ld)\n", (long)MAP_FAILED);
   DEF_CONST(MS_ASYNC, "      = Cint(%d)");
   DEF_CONST(MS_SYNC, "       = Cint(%d)");
   DEF_CONST(MS_INVALIDATE, " = Cint(%d)");
@@ -298,6 +298,27 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("sem_flg      ", sb.sem_flg);
   }
 
+  fprintf(output, "\n# Constants for semaphores:\n");
+  fprintf(output, "const SEM_FAILED    = Ptr{Void}(%ld)\n", (long)SEM_FAILED);
+  {
+    long val = -1;
+#ifdef _SC_SEM_VALUE_MAX
+    if (val < 0) {
+      val = sysconf(_SC_SEM_VALUE_MAX);
+    }
+#endif
+#ifdef SEM_VALUE_MAX
+    if (val < 0) {
+      val = SEM_VALUE_MAX;
+    }
+#endif
+    if (val > 0) {
+      fprintf(output, "const SEM_VALUE_MAX = Cuint(%ld)\n", val);
+    } else {
+      fprintf(output, "const SEM_VALUE_MAX = typemax(Cuint)\n");
+    }
+  }
+
 #if 0
   fprintf(output, "\n# Constants for `union semnum`:\n");
   {
@@ -317,9 +338,6 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Constants for POSIX semaphores:\n");
   DEF_CONST(SEM_FAILED, "    = Cint(%p)");
-#ifdef SEM_VALUE_MAX
-  DEF_CONST(SEM_VALUE_MAX, " = Cint(%d)");
-#endif
 #endif
 
   return 0;
