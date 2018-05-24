@@ -65,6 +65,10 @@ end
         @test sem2[] == 0
         post(sem1)
         @test sem2[] == 1
+        post(sem1)
+        @test sem2[] == 2
+        wait(sem2)
+        @test sem2[] == 1
         @test trywait(sem2) == true
         @test trywait(sem2) == false
         @test_throws TimeoutError timedwait(sem2, 0.1)
@@ -80,6 +84,10 @@ end
         @test sem1[] == Int(sem1)
         @test sem2[] == 0
         post(sem1)
+        @test sem2[] == 1
+        post(sem1)
+        @test sem2[] == 2
+        wait(sem2)
         @test sem2[] == 1
         @test trywait(sem2) == true
         @test trywait(sem2) == false
