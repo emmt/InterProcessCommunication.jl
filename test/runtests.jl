@@ -37,12 +37,40 @@ Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
 Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
     convert(Ptr{T}, obj.ptr)
 
-@testset "Low Level Functions   " begin
-    path = "/tmp"
-    fd = open(IPC.FileDescriptor, path, "r")
-    @test fd.fd ≥ 0
-    close(fd)
-    @test fd.fd == -1
+@testset "File Functions        " begin
+    path = "/tmp/test-$(getpid())"
+    data = rand(10)
+    open(path, "w") do io
+        write(io, data)
+    end
+    f = open(IPC.FileDescriptor, path, "r")
+    @test filesize(f) == sizeof(data)
+    @test fd(f) ≥ 0
+    close(f)
+    @test fd(f) == -1
+end
+
+@testset "Time Functions        " begin
+    # compile and warmup
+    time()
+    float(gettimeofday())
+    float(clock_gettime(CLOCK_MONOTONIC))
+    float(clock_gettime(CLOCK_REALTIME))
+    float(clock_getres(CLOCK_MONOTONIC))
+    float(clock_getres(CLOCK_REALTIME))
+
+    # compare times
+    tol = 0.001
+    @test abs(time() - float(gettimeofday())) ≤ tol
+    @test abs(time() - float(clock_gettime(CLOCK_REALTIME))) ≤ tol
+    @test float(clock_getres(CLOCK_MONOTONIC)) ≤ tol
+    @test float(clock_getres(CLOCK_REALTIME)) ≤ tol
+    @test float(nanosleep(0.01)) == 0
+    s = 1e-2
+    t0 = float(clock_gettime(CLOCK_MONOTONIC))
+    nanosleep(s)
+    t1 = float(clock_gettime(CLOCK_MONOTONIC))
+    @test abs(t1 - (t0 + s)) ≤ tol
 end
 
 @testset "BSD System V Keys     " begin
