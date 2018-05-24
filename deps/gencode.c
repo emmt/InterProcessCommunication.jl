@@ -298,7 +298,8 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("sem_flg      ", sb.sem_flg);
   }
 
-  fprintf(output, "\n# Constants for semaphores:\n");
+  fprintf(output, "\n# Definitions for POSIX semaphores:\n");
+  DEF_SIZEOF_TYPE("sem_t", sem_t);
   fprintf(output, "const SEM_FAILED    = Ptr{Void}(%ld)\n", (long)SEM_FAILED);
   {
     long val = -1;

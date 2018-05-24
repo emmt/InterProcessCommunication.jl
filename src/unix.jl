@@ -96,11 +96,9 @@ _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
 _shm_unlink(path::AbstractString) =
     ccall(:shm_unlink, Cint, (Cstring,), path)
 
-_sem_open(path::AbstractString, flags::Integer,
-          mode::Integer, value::Unsigned) =
-              ccall(:sem_open, Ptr{Void},
-                    (Cstring, Cint, _typeof_mode_t, Cuint),
-                    path, flags, mode, value)
+_sem_open(path::AbstractString, flags::Integer, mode::Integer, value::Unsigned) =
+    ccall(:sem_open, Ptr{Void}, (Cstring, Cint, _typeof_mode_t, Cuint),
+          path, flags, mode, value)
 
 _sem_close(sem::Ptr{Void}) =
     ccall(:sem_close, Cint, (Ptr{Void},), sem)
@@ -109,7 +107,7 @@ _sem_unlink(path::AbstractString) =
     ccall(:sem_unlink, Cint, (Cstring,), path)
 
 _sem_getvalue(sem::Ptr{Void}, val::Union{Ref{Cint},Ptr{Cint}}) =
-    ccall(:sem_getvalue, Cint, (Ptr{Void}, Ptr{Void}), sem, val)
+    ccall(:sem_getvalue, Cint, (Ptr{Void}, Ptr{Cint}), sem, val)
 
 _sem_post(sem::Ptr{Void}) =
     ccall(:sem_post, Cint, (Ptr{Void},), sem)
@@ -124,7 +122,8 @@ _sem_timedwait(sem::Ptr{Void}, timeout::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
     ccall(:sem_timedwait, Cint, (Ptr{Void}, Ptr{TimeSpec}), sem, timeout)
 
 _sem_init(sem::Ptr{Void}, shared::Bool, value::Unsigned) =
-    ccall(:sem_init, Cint, (Ptr{Void}, Cint, Cuint), sem, shared, value)
+    ccall(:sem_init, Cint, (Ptr{Void}, Cint, Cuint),
+          sem, shared, value)
 
 _sem_destroy(sem::Ptr{Void}) =
     ccall(:sem_destroy, Cint, (Ptr{Void},), sem)

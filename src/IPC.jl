@@ -22,6 +22,7 @@ export
     FileDescriptor,
     FileStat,
     IPC_NEW,
+    Semaphore,
     SharedMemory,
     ShmArray,
     ShmId,
@@ -30,14 +31,14 @@ export
     ShmVector,
     TimeSpec,
     TimeVal,
+    TimeoutError,
     WrappedArray,
     clock_getres,
     clock_gettime,
     clock_settime,
-    identifier,
     gettimeofday,
     nanosleep,
-    shmarr,
+    post,
     shmat,
     shmcfg,
     shmdt,
@@ -46,7 +47,8 @@ export
     shminfo!,
     shminfo,
     shmrm,
-    signal
+    signal,
+    trywait
 
 const PARANOID = true
 
@@ -59,6 +61,7 @@ include("wrappedarrays.jl")
 include("unix.jl")
 include("utils.jl")
 include("shm.jl")
+include("semaphores.jl")
 include("mutex.jl")
 
 @deprecate IPC_NEW IPC.PRIVATE

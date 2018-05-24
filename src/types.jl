@@ -9,6 +9,11 @@
 # Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
+"""
+`TimeoutError` is used to throw a timeout exception.
+"""
+struct TimeoutError <: Exception; end
+
 struct TimeVal
     sec::_typeof_timeval_sec    # seconds
     usec::_typeof_timeval_usec  # microseconds
@@ -129,3 +134,10 @@ end
 # FIXME: too bad that the following construction does not work to simplify
 #        writing method signatures:
 # const Dimensions{N} = Union{Vararg{<:Integer,N},Tuple{Vararg{<:Integer,N}}}
+
+mutable struct Semaphore{T}
+    ptr::Ptr{Void}
+    lnk::T
+    # Provide inner constructor to force fully qualified calls.
+    Semaphore{T}(ptr::Ptr, lnk) where {T} = new{T}(ptr, lnk)
+end
