@@ -60,7 +60,7 @@ WrappedArray(id, T, dims; perms=0o600, volatile=true)
 ```
 
 creates a new wrapped array whose elements (and a header) are stored in shared
-meory identified by `id` (see [`SharedMemory`](@ref) for a description of `id`
+memory identified by `id` (see [`SharedMemory`](@ref) for a description of `id`
 and for keywords).  To retrieve this array in another process, just do:
 
 ```julia
@@ -135,18 +135,11 @@ function _check_wrapped_array_arguments(mem::M, ::Type{T},
                                         offset::Integer) where {M,T}
     offset ≥ 0 || throw(ArgumentError("offset must be nonnegative"))
     isbits(T) || throw(ArgumentError("illegal element type ($T)"))
-    ptr = pointer(mem)
-    isa(ptr, Ptr) ||
-        throw(ArgumentError("illegal type returned by `pointer(mem)` ($(typeof(ptr)))"))
+    ptr, len = get_memory_parameters(mem)
     align = Base.datatype_alignment(T)
     addr = ptr + offset
     rem(convert(Int, addr), align) == 0 ||
         throw(ArgumentError("base address must be a multiple of $align bytes"))
-    len = sizeof(mem)
-    isa(len, Integer) ||
-        throw(ArgumentError("illegal type returned by `sizeof(mem)` ($(typeof(len)))"))
-    len ≥ 0 ||
-        throw(ArgumentError("invalid value returned by `sizeof(mem)` ($len)"))
     return (convert(Ptr{T}, addr),
             convert(Int, len) - convert(Int, offset))
 end

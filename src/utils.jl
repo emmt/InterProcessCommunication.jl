@@ -260,6 +260,29 @@ roundup(a::Integer, b::Integer) =
 roundup(a::Int, b::Int) =
     div(a + (b - 1), b)*b
 
+"""
+```julia
+get_memory_parameters(mem) -> ptr::Ptr{Void}, siz::Int
+```
+
+yields the address and number of bytes of memory backed by `mem`.
+The returned values arec checked for correctness.
+
+See also: [`pointer`](@ref), [`sizeof`](@ref).
+
+"""
+function get_memory_parameters(mem)::Tuple{Ptr{Void},Int}
+    siz = sizeof(mem)
+    isa(siz, Integer) ||
+        throw(ArgumentError("illegal type for `sizeof(mem) -> $(typeof(siz))`"))
+    siz ≥ 0 ||
+        throw(ArgumentError("invalid value for `sizeof(mem) -> $siz`"))
+    ptr = pointer(mem)
+    isa(ptr, Ptr) ||
+        throw(ArgumentError("illegal type for `pointer(mem) -> $(typeof(ptr))`"))
+    return (convert(Ptr{Void}, ptr), convert(Int, siz))
+end
+
 @inline _peek(ptr::Ptr{T}) where {T} =
     unsafe_load(ptr)
 @inline _peek(::Type{T}, ptr::Ptr) where {T} =
