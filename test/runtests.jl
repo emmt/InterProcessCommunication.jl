@@ -105,9 +105,11 @@ end
         B = WrappedArray(buf) # indexable byte buffer
         C = WrappedArray(buf, T) # indexable byte buffer
         D = WrappedArray(buf, b -> (T, dims, 0)) # all parameters provided by a function
+        A[:] = 1:length(A) # fill A before the copy
+        E = copy(A)
         n = prod(dims)
-        @test ndims(A) == ndims(D) == length(dims)
-        @test size(A) == dims
+        @test ndims(A) == ndims(D) == ndims(E) == length(dims)
+        @test size(A) == size(D) == size(E) == dims
         @test all(size(A,i) == size(D,i) == dims[i] for i in 1:length(dims))
         @test eltype(A) == eltype(C) == eltype(D) == T
         @test Base.elsize(A) == Base.sizeof(T)
@@ -115,11 +117,11 @@ end
         @test sizeof(A) == sizeof(B) == sizeof(C) == sizeof(D) == sizeof(buf)
         @test pointer(A) == pointer(B) == pointer(C) == pointer(D) == pointer(buf)
         @test isa(A.arr, Array{T,length(dims)})
-        A[:] = 1:length(A)
         @test A[1] == 1 && A[end] == prod(dims)
         @test all(A[i] == i for i in 1:n)
         @test all(C[i] == i for i in 1:n)
         @test all(D[i] == i for i in 1:n)
+        @test all(E[i] == i for i in 1:n)
         B[:] = 0
         @test all(A[i] == 0 for i in 1:n)
         C[:] = randn(T, n)
@@ -134,6 +136,9 @@ end
         A[2,3] = 23
         A[3,2] = 32
         @test D[2,3] == 23 && D[3,2] == 32
+        # Test copy back.
+        copy!(A, E)
+        @test all(A[i] == E[i] for i in 1:n)
     end
     gc() # call garbage collector to exercise the finalizers
 end
