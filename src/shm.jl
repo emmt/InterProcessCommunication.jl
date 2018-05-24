@@ -112,16 +112,10 @@ function SharedMemory(name::AbstractString,
                       len::Integer;
                       perms::Integer = S_IRUSR | S_IWUSR,
                       volatile::Bool = true) :: SharedMemory{String}
-    mode = maskmode(perms)
-    flags = O_CREAT | O_EXCL
-    usermode = mode & (S_IRUSR | S_IWUSR)
-    if usermode == (S_IRUSR | S_IWUSR)
-        flags |= O_RDWR
-    elseif usermode == S_IRUSR
-        flags |= O_RDONLY
-    else
-        throw_argument_error("at least `S_IRUSR` must be set in `perms`")
-    end
+    # Make sure owner has read and write permissions (otherwise setting the
+    # size will fail).
+    mode = maskmode(perms) | (S_IRUSR | S_IWUSR)
+    flags = O_CREAT | O_EXCL | O_RDWR
     return SharedMemory(name, flags, mode, len, volatile)
 end
 
