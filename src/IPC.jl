@@ -46,7 +46,6 @@ export
     shmid,
     shminfo!,
     shminfo,
-    shmrm,
     signal,
     trywait
 

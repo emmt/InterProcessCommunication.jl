@@ -171,15 +171,15 @@ end
         T = Int
         n = 10
         len = n*sizeof(Int)
-        path = "/shm-$(getpid())"
-        try; shmrm(path); end
-        A = SharedMemory(path, len)
+        name = "/shm-$(getpid())"
+        rm(SharedMemory, name)
+        A = SharedMemory(name, len)
         id = shmid(A)
         @test isa(id, String)
-        @test id == path
+        @test id == name
         B = SharedMemory(id; readonly=false)
         C = SharedMemory(id; readonly=true)
-        @test shmid(A) == shmid(B) == shmid(C) == path
+        @test shmid(A) == shmid(B) == shmid(C) == name
         @test sizeof(A) == sizeof(B) == sizeof(C) == len
         Aptr = convert(Ptr{T},pointer(A))
         Bptr = convert(Ptr{T},pointer(B))

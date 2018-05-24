@@ -49,10 +49,24 @@ instance of `SharedMemory`, then:
 pointer(shm)    # yields the nase address of the shared memory
 sizeof(shm)     # yields the number of bytes of the shared memory
 shmid(shm)      # yields the identifier the shared memory
-shmrm(shm)      # ensures that shared memory is eventually destroyed
 ```
 
-See also: [`shmid`](@ref), [`shmrm`](@ref).
+To ensure that shared memory `shm` is eventually destroyed, call:
+
+```julia
+rm(shm)
+```
+
+The `rm` method may also be called to remove an existing shared memory segment
+or object.  There are several possibilities:
+
+```julia
+rm(SharedMemory, name)  # `name` identifies a POSIX shared memory object
+rm(SharedMemory, key)   # `key` is associated with a BSD shared memory segment
+rm(id)                  # `id` is the identifier of a BSD shared memory segment
+```
+
+See also: [`shmid`](@ref).
 
 """
 function SharedMemory(key::Key, len::Integer;
@@ -94,7 +108,7 @@ function SharedMemory(id::ShmId; readonly::Bool=false)::SharedMemory{ShmId}
 end
 
 # Create a new POSIX shared memory object.
-function SharedMemory(path::AbstractString,
+function SharedMemory(name::AbstractString,
                       len::Integer;
                       perms::Integer = S_IRUSR | S_IWUSR,
                       volatile::Bool = true) :: SharedMemory{String}
@@ -108,18 +122,18 @@ function SharedMemory(path::AbstractString,
     else
         throw(ArgumentError("at least `S_IRUSR` must be set in `perms`"))
     end
-    return SharedMemory(path, flags, mode, len, volatile)
+    return SharedMemory(name, flags, mode, len, volatile)
 end
 
 # Map an existing POSIX shared memory object.
-function SharedMemory(path::AbstractString;
+function SharedMemory(name::AbstractString;
                       readonly::Bool=false) :: SharedMemory{String}
     flags = (readonly ? O_RDONLY : O_RDWR)
     mode = (readonly ? S_IRUSR : S_IRUSR|S_IWUSR)
-    return SharedMemory(path, flags, mode, 0, false)
+    return SharedMemory(name, flags, mode, 0, false)
 end
 
-function SharedMemory(path::AbstractString,
+function SharedMemory(name::AbstractString,
                       flags::Integer,
                       mode::Integer,
                       len::Integer = 0,
@@ -129,7 +143,7 @@ function SharedMemory(path::AbstractString,
     create = ((flags & O_CREAT) != 0)
 
     # Open shared memory and set or get its size.
-    fd = _shm_open(path, flags, mode)
+    fd = _shm_open(name, flags, mode)
     if fd == -1
         throw(SystemError("shm_open"))
     end
@@ -140,7 +154,7 @@ function SharedMemory(path::AbstractString,
         if _ftruncate(fd, len) != SUCCESS
             errno = Libc.errno()
             _close(fd)
-            _shm_unlink(path)
+            _shm_unlink(name)
             throw(SystemError("ftruncate", errno))
         end
         nbytes = Int(len)
@@ -164,7 +178,7 @@ function SharedMemory(path::AbstractString,
         errno = Libc.errno()
         _close(fd)
         if create
-            _shm_unlink(path)
+            _shm_unlink(name)
         end
         throw(SystemError("mmap", errno))
     end
@@ -173,14 +187,14 @@ function SharedMemory(path::AbstractString,
     if _close(fd) != SUCCESS
         errno = Libc.errno()
         if create
-            _shm_unlink(path)
+            _shm_unlink(name)
         end
         _munmap(ptr, len)
         throw(SystemError("close", errno))
     end
 
     # Return the shared memory object.
-    return SharedMemory{String}(ptr, nbytes, volatile, String(path))
+    return SharedMemory{String}(ptr, nbytes, volatile, String(name))
 end
 
 function _destroy(obj::SharedMemory{String})
@@ -255,40 +269,30 @@ shmid(arr::WrappedArray{T,N,<:SharedMemory}) where {T,N} = shmid(arr.mem)
 shmid(id::ShmId) = id
 shmid(key::Key, args...) = ShmId(key, args...)
 
+Base.rm(shm::SharedMemory{String}) = rm(SharedMemory, shmid(shm))
 
-"""
-```julia
-shmrm(arg)
-```
+Base.rm(shm::SharedMemory{ShmId}) = rm(shmid(shm))
 
-ensures that shared memory identified by `arg` or associated with `arg` is
-destroyed when no longer in use.  Argument can be:
+Base.rm(::Type{SharedMemory}, key::Key) = rm(ShmId(key))
 
-* An instance of `SharedMemory`.
-
-* A string starting with a `'/'` (and no other `'/'`) to identify a POSIX
-  shared memory object.
-
-* An instance of `IPC.Key` to specify a System V IPC key associated
-  with a shared memory segment.
-
-* An instance of `ShmId` to specify a System V shared memory segment.
-
-See also: [`SharedMemory`](@ref), [`shmid`](@ref).
-
-"""
-shmrm(shm::SharedMemory) = shmrm(shmid(shm))
-
-shmrm(path::AbstractString) =
-    systemerror("shm_unlink", _shm_unlink(path) != SUCCESS)
-
-function shmrm(id::ShmId)
-    systemerror("failed to mark shared memory segment for destruction",
-                _shmrm(id.value) != SUCCESS)
-    return id
+function Base.rm(::Type{SharedMemory}, name::AbstractString)
+    if _shm_unlink(name) != SUCCESS
+        errno = Libc.errno()
+        if errno != Libc.ENOENT
+            throw(SystemError("shm_unlink", errno))
+        end
+    end
 end
 
-shmrm(key::Key) = shmrm(ShmId(key))
+function Base.rm(id::ShmId)
+    if _shmrm(name) != SUCCESS
+        # Only throw an error if not an already removed shared memory segment.
+        errno = Libc.errno()
+        if errno != Libc.EIDRM
+            throw(SystemError("shmctl", errno))
+        end
+    end
+end
 
 #------------------------------------------------------------------------------
 # System V Shared Memory
