@@ -58,6 +58,8 @@ export
     sigprocmask,
     sigqueue,
     sigsuspend,
+    sigwait!,
+    sigwait,
     trywait
 
 const PARANOID = true

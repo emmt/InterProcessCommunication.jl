@@ -107,8 +107,14 @@ _sigismember(sigset::Ref{SigSet}, signum::Integer) =
 
 """
 ```julia
-sigqueue(pid::Integer, sig::Integer, val
+sigqueue(pid, sig, val=0)
 ```
+
+sends the signal `sig` to the process whose identifier is `pid`.  Argument
+`val` is an optional value to join to to the signal.  This value represents a C
+type `union sigval` (an union of a C `int` and a C `void*`), in Julia it is
+specified as an integer large enough to represent both kind of values.
+
 """
 sigqueue(pid::ProcessId, sig::Integer, val::Integer = 0) =
     systemerror("sigqueue",
@@ -246,7 +252,7 @@ _sigsuspend(mask::Ref{SigSet}) =
 
 """
 ```julia
-wait(mask::SigSet) -> signum
+sigwait(mask, timeout=Inf) -> signum
 ```
 
 suspends execution of the calling thread until one of the signals specified in
@@ -254,16 +260,88 @@ the signal set `mask` becomes pending.  The function accepts the signal
 (removes it from the pending list of signals), and returns the signal number
 `signum`.
 
+Optional argument `timeout` can be specified to set a limit on the time to wait
+for one the signals to become pending.  `timeout` can be a real number to
+specify a number of seconds or an instance of `TimeSpec`.  If `timeout` is
+`Inf` (the default), it is assumed that there is no limit on the time to wait.
+If `timeout` is a number of seconds smaller or equal zero or if `timeout` is
+`TimeSpec(0,0)`, the methods performs a poll and returns immediately.  It none
+of the signals specified in the signal set `mask` becomes pending during the
+allowed waiting time, a `TimeoutError` exception is raised.
+
+A variant:
+
+```julia
+sigwait!(mask, info, timeout=Inf) -> signum
+```
+
+where `info` is an instance of `SigInfo` to stores the information about the
+accepted signal and other arguments are as for the `sigwait` method.
+
 """
-function Base.wait(mask::SigSet)
+function sigwait(mask::SigSet)
     signum = Ref{Cint}()
     code = _sigwait(pointer(mask), signum)
     code == 0 || throw_system_error("sigwait", code)
     return signum[]
 end
 
+sigwait(mask::SigSet, secs::Real)::Cint =
+    (secs ≥ Inf ? sigwait(mask) : sigwait(mask, _sigtimedwait_timeout(secs)))
+
+sigwait!(mask::SigSet, info::SigInfo, secs::Real)::Cint =
+    (secs ≥ Inf ? sigwait!(mask, info) :
+     sigwait!(mask, info, _sigtimedwait_timeout(secs)))
+
+function sigwait(mask::SigSet, timeout::TimeSpec)::Cint
+    signum = _sigtimedwait(pointer(mask), Ptr{SigInfo}(0), Ref(timeout))
+    signum == FAILURE && _throw_sigtimedwait_error()
+    return signum
+end
+
+function sigwait!(mask::SigSet, info::SigInfo)
+    signum = _sigwaitinfo(pointer(mask), pointer(info))
+    systemerror("sigwaitinfo", signum == FAILURE)
+    return signum
+end
+
+function sigwait!(mask::SigSet, info::SigInfo, timeout::TimeSpec)
+    signum = _sigtimedwait(pointer(mask), pointer(info), Ref(timeout))
+    signum == FAILURE && _throw_sigtimedwait_error()
+    return signum
+end
+
 _sigwait(mask::Ref{SigSet}, signum::Ref{Cint}) =
     ccall(:sigwait, Cint, (Ptr{Void}, Ptr{Cint}), mask, signum)
+
+_sigwaitinfo(set::Ref{SigSet}, info::Ref{SigInfo}) =
+    ccall(:sigwaitinfo, Cint, (Ptr{SigSet}, Ptr{SigInfo}), set, info)
+
+_sigtimedwait(set::Ref{SigSet}, info::Ref{SigInfo}, timeout::Ref{TimeSpec}) =
+    ccall(:sigtimedwait, Cint, (Ptr{SigSet}, Ptr{SigInfo}, Ptr{TimeSpec}),
+          set, info, timeout)
+
+function _sigtimedwait_timeout(secs::Real)::TimeSpec
+    isnan(secs) && throw_argument_error("number of seconds is NaN")
+    if secs > 0
+        # Timeout is in the future.
+        return TimeSpec(secs)
+    else
+        # Set timeout so as to perform a poll and return immediately.
+        return TimeSpec(0, 0)
+    end
+end
+
+function _throw_sigtimedwait_error()
+    errno = Libc.errno()
+    if errno == Libc.EAGAIN
+        throw(TimeoutError())
+    elseif errno == Libc.EINTR
+        throw(InterruptException())
+    else
+        throw_system_error("sigtimedwait", errno)
+    end
+end
 
 """
 ```julia
