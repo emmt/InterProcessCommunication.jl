@@ -232,7 +232,7 @@ See also: [`SigInfo`](@ref).
 SigAction() = SigAction(C_NULL, SigSet(), 0)
 
 function Base.show(io::IO, obj::SigAction)
-    print(io, "SharedMemory(handler=Ptr{Void}(")
+    print(io, "SigAction(handler=Ptr{Void}(")
     @printf(io, "%p", obj.handler)
     print(io, "), mask=SigSet(....), flags=0x", hex(obj[:flags]), ")")
 end
