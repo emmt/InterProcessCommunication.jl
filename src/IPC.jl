@@ -49,10 +49,15 @@ export
     shmid,
     shminfo!,
     shminfo,
+    sigaction!,
     sigaction,
     signal,
+    sigpending!,
     sigpending,
+    sigprocmask!,
+    sigprocmask,
     sigqueue,
+    sigsuspend,
     trywait
 
 const PARANOID = true

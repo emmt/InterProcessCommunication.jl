@@ -8,6 +8,9 @@
 # This file is part of IPC.jl released under the MIT "expat" license.
 # Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
+# Part of the documentation is more or less directly extracted from the Linux
+# manual pages (http://www.kernel.org/doc/man-pages/).
+#
 
 """
 
@@ -116,7 +119,7 @@ _sigqueue(pid::Integer, sig::Integer, val::Integer) =
 
 """
 ```julia
-sigpending() -> sigset
+sigpending() -> mask
 ```
 
 yields the set of signals that are pending for delivery to the calling thread
@@ -125,10 +128,10 @@ an instance of [`SigSet`](@ref).
 
 The call:
 ```julia
-sigpending!(sigset) -> sigset
+sigpending!(mask) -> mask
 ```
 
-overwites `sigset` with the set of pending signals and returns its argument.
+overwites `mask` with the set of pending signals and returns its argument.
 
 """ sigpending
 
@@ -136,13 +139,13 @@ overwites `sigset` with the set of pending signals and returns its argument.
 
 sigpending() = sigpending!(SigSet())
 
-function sigpending!(sigset::SigSet)
-    systemerror("sigpending", _sigpending(pointer(sigset)) != SUCCESS)
-    return sigset
+function sigpending!(mask::SigSet)
+    systemerror("sigpending", _sigpending(pointer(mask)) != SUCCESS)
+    return mask
 end
 
-_sigpending(sigset::Ref{SigSet}) =
-    ccall(:sigpending, Cint, (Ptr{SigSet},), sigset)
+_sigpending(mask::Ref{SigSet}) =
+    ccall(:sigpending, Cint, (Ptr{SigSet},), mask)
 
 """
 
@@ -211,33 +214,56 @@ sigprocmask(how::Integer, set::SigSet) =
 function sigprocmask!(how::Integer, set::SigSet, old::SigSet)
     systemerror(string(_sigprocmask_symbol),
                 _sigprocmask(how, pointer(set), pointer(old)) != SUCCESS)
-    return oldset
+    return old
 end
 
-_sigprocmask(how::Integer, sigset::Ref{SigSet}, oldset::Ref{SigSet}) =
+_sigprocmask(how::Integer, set::Ref{SigSet}, old::Ref{SigSet}) =
     ccall(_sigprocmask_symbol, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
-          how, sigset, oldset)
+          how, set, old)
+"""
+```julia
+sigsuspend(mask)
+```
+
+temporarily replaces the signal mask of the calling process with the mask given
+by `mask` and then suspends the process until delivery of a signal whose action
+is to invoke a signal handler or to terminate a process.
+
+If the signal terminates the process, then `sigsuspend` does not return.  If
+the signal is caught, then `sigsuspend` returns after the signal handler
+returns, and the signal mask is restored to the state before the call to
+`sigsuspend`.
+
+It is not possible to block `IPC.SIGKILL` or `IPC.SIGSTOP`; specifying these
+signals in mask, has no effect on the process's signal mask.
+
+"""
+sigsuspend(mask::SigSet) =
+    systemerror("sigsuspend", _sigsuspend(pointer(mask)) != SUCCESS)
+
+_sigsuspend(mask::Ref{SigSet}) =
+    ccall(:sigsuspend, Cint, (Ptr{SigSet},), mask)
 
 """
 ```julia
-wait(sigset::SigSet) -> signum
+wait(mask::SigSet) -> signum
 ```
 
 suspends execution of the calling thread until one of the signals specified in
-the signal set `sigset` becomes pending.  The function accepts the signal
+the signal set `mask` becomes pending.  The function accepts the signal
 (removes it from the pending list of signals), and returns the signal number
 `signum`.
 
 """
-function Base.wait(sigset::SigSet)
+function Base.wait(mask::SigSet)
     signum = Ref{Cint}()
-    code = _sigwait(pointer(sigset), signum)
+    code = _sigwait(pointer(mask), signum)
     code == 0 || throw_system_error("sigwait", code)
     return signum[]
 end
 
-_sigwait(sigset::Ref{SigSet}, signum::Ref{Cint}) =
-    ccall(:sigwait, Cint, (Ptr{Void}, Ptr{Cint}), sigset, signum)
+_sigwait(mask::Ref{SigSet}, signum::Ref{Cint}) =
+    ccall(:sigwait, Cint, (Ptr{Void}, Ptr{Cint}), mask, signum)
 
 """
 ```julia
@@ -484,7 +510,6 @@ siginfo_band(ptr::Ptr{SigInfo}) =
 # siginfo_arch(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_)
 
-# FIXME: not sure all are RT signals:
-# FIXME: sigreturn - return from signal handler and cleanup stack frame
-# FIXME: sigsuspend - wait for a signal
-# FIXME: siginterrupt - allow signals to interrupt system calls
+# FIXME: siginterrupt - allow signals to interrupt system calls.
+#        Not implemented (obsoleted in POSIX), use sigaction with SA_RESTART
+#        flag instead.
