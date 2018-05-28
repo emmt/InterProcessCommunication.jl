@@ -135,6 +135,7 @@ function SharedMemory(name::AbstractString,
 
     # Create a new POSIX shared memory object?
     create = ((flags & O_CREAT) != 0)
+    create && len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
 
     # Open shared memory and set or get its size.
     fd = _shm_open(name, flags, mode)
@@ -144,7 +145,6 @@ function SharedMemory(name::AbstractString,
     local nbytes::Int = 0
     if create
         # Set the size of the new shared memory object.
-        len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
         if _ftruncate(fd, len) != SUCCESS
             errno = Libc.errno()
             _close(fd)
