@@ -11,8 +11,6 @@ interacts with other processes or threads by means of BSD (System V) IPC or
 POSIX shared memory, semaphores, message queues or mutexes and condition
 variables.  Module `IPC.jl` intends to provide such facilities.
 
-*For now, only shared memory, mutexes and condition variables are implemented.*
-
 Julia IPC package provides:
 
 * Two kinds of [**shared memory**](doc/sharedmemory.md) objects:
@@ -27,6 +25,9 @@ Julia IPC package provides:
   [anonymous semaphores](doc/semaphores.md#anonymous-semaphores) which are
   backed by *memory* objects (usually shared memory) providing the necessary
   storage.
+
+* Management of [**signals**](doc/signals.md) including so called real-time
+  signals.
 
 
 ## Installation

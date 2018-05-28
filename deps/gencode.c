@@ -376,8 +376,17 @@ int main(int argc, char* argv[])
 #endif
 
   fprintf(output, "\n# Definitions for real-time signals:\n");
-  DEF_CONST(SIGRTMIN, " = Cint(%d)");
-  DEF_CONST(SIGRTMAX, " = Cint(%d)");
+  DEF_CONST(SIGRTMIN, "    = Cint(%d)");
+  DEF_CONST(SIGRTMAX, "    = Cint(%d)");
+#ifdef SIG_BLOCK
+  DEF_CONST(SIG_BLOCK, "   = Cint(%d)");
+#endif
+#ifdef SIG_UNBLOCK
+  DEF_CONST(SIG_UNBLOCK, " = Cint(%d)");
+#endif
+#ifdef SIG_SETMASK
+  DEF_CONST(SIG_SETMASK, " = Cint(%d)");
+#endif
   fprintf(output, "const _typeof_sigval_t  = Int%d\n",
           8*(int)sizeof(union sigval));
 

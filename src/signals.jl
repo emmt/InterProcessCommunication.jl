@@ -58,34 +58,42 @@ function Base.fill!(sigset::SigSet, val::Bool)
     return sigset
 end
 
+for T in (SigSet, SigInfo)
+    @eval begin
+        Base.pointer(obj::$T) = unsafe_convert(Ptr{$T}, obj)
+        Base.unsafe_convert(::Type{Ptr{$T}}, obj::$T) =
+            convert(Ptr{$T}, pointer_from_objref(obj))
+    end
+end
+
 sigemptyset!(sigset::SigSet) =
-    systemerror("sigemptyset", _sigemptyset(Ref(sigset)) != SUCCESS)
+    systemerror("sigemptyset", _sigemptyset(pointer(sigset)) != SUCCESS)
 
 _sigemptyset(sigset::Ref{SigSet}) =
     ccall(:sigemptyset, Cint, (Ptr{SigSet},), sigset)
 
 sigfillset!(sigset::SigSet) =
-    systemerror("sigfillset", _sigfillset(Ref(sigset)) != SUCCESS)
+    systemerror("sigfillset", _sigfillset(pointer(sigset)) != SUCCESS)
 
 _sigfillset(sigset::Ref{SigSet}) =
     ccall(:sigfillset, Cint, (Ptr{SigSet},), sigset)
 
 sigaddset!(sigset::SigSet, signum::Integer) =
     systemerror("sigaddset",
-                _sigaddset(Ref(sigset), signum) != SUCCESS)
+                _sigaddset(pointer(sigset), signum) != SUCCESS)
 
 _sigaddset(sigset::Ref{SigSet}, signum::Integer) =
     ccall(:sigaddset, Cint, (Ptr{SigSet}, Cint), sigset, signum)
 
 sigdelset!(sigset::SigSet, signum::Integer) =
     systemerror("sigdelset",
-                _sigdelset(Ref(sigset), signum) != SUCCESS)
+                _sigdelset(pointer(sigset), signum) != SUCCESS)
 
 _sigdelset(sigset::Ref{SigSet}, signum::Integer) =
     ccall(:sigdelset, Cint, (Ptr{SigSet}, Cint), sigset, signum)
 
 function sigismember(sigset::SigSet, signum::Integer)
-    val = _sigismember(Ref(sigset), signum)
+    val = _sigismember(pointer(sigset), signum)
     systemerror("sigismember", val == FAILURE)
     return val == one(val)
 end
@@ -112,7 +120,7 @@ sigpending() -> sigset
 ```
 
 yields the set of signals that are pending for delivery to the calling thread
-(i.e., the signals which have been raised while blocked).  The retuened value is
+(i.e., the signals which have been raised while blocked).  The returned value is
 an instance of [`SigSet`](@ref).
 
 The call:
@@ -129,15 +137,85 @@ overwites `sigset` with the set of pending signals and returns its argument.
 sigpending() = sigpending!(SigSet())
 
 function sigpending!(sigset::SigSet)
-    systemerror("sigpending", _sigpending(Ref(sigset)) != SUCCESS)
+    systemerror("sigpending", _sigpending(pointer(sigset)) != SUCCESS)
     return sigset
 end
 
 _sigpending(sigset::Ref{SigSet}) =
     ccall(:sigpending, Cint, (Ptr{SigSet},), sigset)
 
-_sigprocmask(how::Integer, sigset::SigSet, oldset::SigSet) =
-    ccall(:sigprocmask, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
+"""
+
+The `sigprocmask` and `sigprocmask!` methods can be used to examine and change
+blocked signals for the thread.
+
+The call:
+
+```julia
+sigprocmask() -> cur
+```
+
+yields the current set of blocked signals; the storage for the result can also
+be provided:
+
+```julia
+sigprocmask!(cur) -> cur
+```
+
+To change the set of blocked signals, call:
+
+```julia
+sigprocmask(how, set)
+```
+
+with `set` a `SigSet` mask and `how` a parameter which specifies how to
+interpret `set`:
+
+* `IPC.SIG_BLOCK`: The set of blocked signals is the union of the current set
+  and the `set` argument.
+
+* `IPC.SIG_UNBLOCK`: The signals in `set` are removed from the current set of
+  blocked signals.  It is permissible to attempt to unblock a signal which is
+  not blocked.
+
+* `IPC.SIG_SETMASK`: The set of blocked signals is set to the argument `set`.
+
+Finally, the call:
+
+```julia
+sigprocmask!(how, set, old) -> old
+```
+
+changes the set of blocked signals according to `how` and `set` and oberwrites
+`old` the previous set of blocked signals.
+
+""" sigprocmask
+
+# Constant `_sigprocmask_symbol` is `:sigprocmask` or `:pthread_sigmask`.
+const _sigprocmask_symbol = :pthread_sigmask
+
+@doc @doc(sigprocmask) sigprocmask!
+
+sigprocmask() = sigprocmask!(SigSet())
+
+function sigprocmask!(cur::SigSet)
+    systemerror(string(_sigprocmask_symbol),
+                _sigprocmask(IPC.SIG_BLOCK, Ptr{SigSet}(0), pointer(cur)) != SUCCESS)
+    return cur
+end
+
+sigprocmask(how::Integer, set::SigSet) =
+    systemerror(string(_sigprocmask_symbol),
+                _sigprocmask(how, pointer(set), Ptr{SigSet}(0)) != SUCCESS)
+
+function sigprocmask!(how::Integer, set::SigSet, old::SigSet)
+    systemerror(string(_sigprocmask_symbol),
+                _sigprocmask(how, pointer(set), pointer(old)) != SUCCESS)
+    return oldset
+end
+
+_sigprocmask(how::Integer, sigset::Ref{SigSet}, oldset::Ref{SigSet}) =
+    ccall(_sigprocmask_symbol, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
           how, sigset, oldset)
 
 """
@@ -153,7 +231,7 @@ the signal set `sigset` becomes pending.  The function accepts the signal
 """
 function Base.wait(sigset::SigSet)
     signum = Ref{Cint}()
-    code = _sigwait(Ref(sigset), signum)
+    code = _sigwait(pointer(sigset), signum)
     code == 0 || throw_system_error("sigwait", code)
     return signum[]
 end
@@ -346,15 +424,14 @@ to represent both kind of values.
 
 """ SigInfo
 
-@doc @doc(SigInfo) siginfo_signo
-@doc @doc(SigInfo) siginfo_code
-@doc @doc(SigInfo) siginfo_errno
-@doc @doc(SigInfo) siginfo_pid
-@doc @doc(SigInfo) siginfo_uid
-@doc @doc(SigInfo) siginfo_status
-@doc @doc(SigInfo) siginfo_value
-@doc @doc(SigInfo) siginfo_addr
-@doc @doc(SigInfo) siginfo_band
+for f in (:siginfo_signo, :siginfo_code, :siginfo_errno, :siginfo_pid,
+          :siginfo_uid, :siginfo_status, :siginfo_value, :siginfo_addr,
+          :siginfo_band)
+    @eval begin
+        @doc @doc(SigInfo) $f
+        $f(si::SigInfo) = $f(pointer(si))
+    end
+end
 
 siginfo_signo(ptr::Ptr{SigInfo}) =
     _peek(Cint, ptr + _offsetof_siginfo_signo)
@@ -408,7 +485,6 @@ siginfo_band(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_)
 
 # FIXME: not sure all are RT signals:
-# FIXME: sigprocmask - examine and change blocked signals
 # FIXME: sigreturn - return from signal handler and cleanup stack frame
 # FIXME: sigsuspend - wait for a signal
 # FIXME: siginterrupt - allow signals to interrupt system calls

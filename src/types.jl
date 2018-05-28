@@ -32,13 +32,15 @@ struct UserId
     value::_typeof_uid_t
 end
 
-# Counterpart of C `sigset_t` structure.
+# Counterpart of C `sigset_t` structure.  Must be mutable to avoid wrapping it
+# in a Ref when passed by address.
 mutable struct SigSet
     bits::_typeof_sigset
     SigSet() = fill!(new(), false)
 end
 
-# Counterpart of C `struct sigaction` structure.
+# Counterpart of C `struct sigaction` structure.  Must be mutable to avoid
+# wrapping it in a Ref when passed by address.
 mutable struct SigAction
     handler::Ptr{Void}
     mask::SigSet
@@ -46,10 +48,16 @@ mutable struct SigAction
 end
 
 # Counterpart of C `siginfo_t` structure; although only a pointer of this is
-# ever used by signal handlers.
-struct SigInfo
+# ever used by signal handlers.  Must be mutable to avoid wrapping it in a Ref
+# when passed by address.
+mutable struct SigInfo
     bits::_typeof_siginfo
-    SigInfo() = fill!(new(), 0)
+    function SigInfo()
+        obj = new()
+        ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+              pointer_from_objref(obj), 0, sizeof(obj))
+        return obj
+    end
 end
 
 struct Key

@@ -87,6 +87,33 @@ end
     @test abs(t1 - (t0 + s)) ≤ tol
 end
 
+@testset "Signals               " begin
+    # Sanity check:
+    @test isbits(IPC._typeof_sigset)
+    @test sizeof(IPC._typeof_sigset) == IPC._sizeof_sigset
+    @test isbits(IPC._typeof_siginfo)
+    @test sizeof(IPC._typeof_siginfo) == IPC._sizeof_siginfo
+
+    # SigSet:
+    set = SigSet()
+    @test all(set[i] == false for i in IPC.SIGRTMIN:IPC.SIGRTMAX)
+    fill!(set, true)
+    @test all(set[i] for i in IPC.SIGRTMIN:IPC.SIGRTMAX)
+    i = rand(IPC.SIGRTMIN:IPC.SIGRTMAX)
+    set[i] = false
+    @test !set[i]
+    set[i] = true
+    @test set[i]
+    set = sigpending()
+    @test all(set[i] == false for i in 1:IPC.SIGRTMAX)
+
+    # SigInfo:
+    si = SigInfo()
+
+    # SigAction:
+    sa = SigAction()
+end
+
 @testset "BSD System V Keys     " begin
     path = "/tmp"
     key1 = IPC.Key(path, '1')
