@@ -24,6 +24,14 @@ struct TimeSpec
     nsec::_typeof_timespec_nsec  # nanoseconds
 end
 
+struct ProcessId
+    value::_typeof_pid_t
+end
+
+struct UserId
+    value::_typeof_uid_t
+end
+
 struct Key
     value::_typeof_key_t
     Key(value::Integer) = new(value)

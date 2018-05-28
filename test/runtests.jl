@@ -37,6 +37,15 @@ Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
 Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
     convert(Ptr{T}, obj.ptr)
 
+@testset "Basic Functions       " begin
+    pid = IPC.getpid()
+    @test pid.value == getpid()
+    @test isa(string(pid), String)
+    @test isa(string(IPC.getppid()), String)
+    @test isa(string(IPC.getuid()), String)
+    @test isa(string(IPC.geteuid()), String)
+end
+
 @testset "File Functions        " begin
     path = "/tmp/test-$(getpid())"
     data = rand(10)

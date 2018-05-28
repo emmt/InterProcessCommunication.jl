@@ -9,6 +9,65 @@
 # Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
+"""
+```julia
+IPC.getpid() -> pid
+```
+
+yields the process ID of the calling process.
+
+```julia
+IPC.getppid() -> pid
+```
+
+yields the the process ID of the parent of the calling process.
+
+These 2 methods yields an instance of `IPC.ProcessId`.
+
+See also: [`getuid`](@ref).
+
+""" ProcessId
+
+getpid() = ccall(:getpid, ProcessId, ())
+getppid() = ccall(:getppid, ProcessId, ())
+
+@doc @doc(ProcessId) getpid
+@doc @doc(ProcessId) getppid
+
+"""
+```julia
+IPC.getuid() -> uid
+```
+
+yields the real user ID of the calling process.
+
+```julia
+IPC.geteuid() -> uid
+```
+
+yields the effective user ID of the calling process.
+
+These 2 methods yields an instance of `IPC.UserId`.
+
+See also: [`getpid`](@ref).
+
+""" UserId
+
+getuid() = ccall(:getuid, UserId, ())
+geteuid() = ccall(:geteuid, UserId, ())
+
+@doc @doc(UserId) getuid
+@doc @doc(UserId) geteuid
+
+
+Base.show(io::IO, id::ProcessId) = print(io, "IPC.ProcessId(", dec(id.value), ")")
+
+Base.show(io::IO, id::UserId) = print(io, "IPC.UserId(", dec(id.value), ")")
+
+Base.show(io::IO, ::MIME"text/plain", arg::Union{ProcessId,UserId}) =
+    show(io, arg)
+
+
 const MASKMODE = (S_IRWXU|S_IRWXG|S_IRWXO)
 
 """
@@ -26,10 +85,6 @@ maskmode(mode::Integer) :: _typeof_mode_t =
     convert(_typeof_mode_t, mode) & MASKMODE
 
 @doc @doc(maskmode) MASKMODE
-
-# FIXME: `getpid` already provided by Julia.
-# getpid() = ccall(:getpid, _typeof_pid_t, ())
-getppid() = ccall(:getppid, _typeof_pid_t, ())
 
 _open(path::AbstractString, flags::Integer, mode::Integer) =
     ccall(:open, Cint, (Cstring, Cint, _typeof_mode_t), path, flags, mode)
@@ -215,4 +270,3 @@ function Base.skip(obj::FileDescriptor, offset::Integer)
 end
 
 Base.isopen(obj::FileDescriptor) = fd(obj) ≥ 0
-
