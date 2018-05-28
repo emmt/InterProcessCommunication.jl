@@ -345,7 +345,7 @@ end
 
 """
 ```julia
-sigaction(signum) -> curact
+sigaction(signum) -> cur
 ```
 
 yields the current action taken by the process on receipt of the signal
@@ -416,7 +416,7 @@ SigAction() = SigAction(C_NULL, SigSet(), 0)
 function Base.show(io::IO, obj::SigAction)
     print(io, "SigAction(handler=Ptr{Void}(")
     @printf(io, "%p", obj.handler)
-    print(io, "), mask=SigSet(....), flags=0x", hex(obj[:flags]), ")")
+    print(io, "), mask=SigSet(....), flags=0x", hex(obj.flags), ")")
 end
 
 Base.show(io::IO, ::MIME"text/plain", obj::SigAction) = show(io, obj)
@@ -425,7 +425,9 @@ function sigaction(signum::Integer)
     buf = _sigactionbuffer()
     ptr = pointer(buf)
     systemerror("sigaction", _sigaction(signum, C_NULL, ptr) != SUCCESS)
-    return _loadsigaction(ptr)
+    flags = _getsigactionflags(ptr)
+    return SigAction(_getsigactionhandler(ptr, flags),
+                     _getsigactionmask(ptr), flags)
 end
 
 function sigaction(signum::Integer, sigact::SigAction)
@@ -435,14 +437,17 @@ function sigaction(signum::Integer, sigact::SigAction)
     systemerror("sigaction", _sigaction(signum, ptr, C_NULL) != SUCCESS)
 end
 
-function sigaction!(signum::Integer, sigact::SigAction, sigold::SigAction)
+function sigaction!(signum::Integer, sigact::SigAction, old::SigAction)
     newbuf = _sigactionbuffer()
     newptr = pointer(newbuf)
     oldbuf = _sigactionbuffer()
     oldptr = pointer(oldbuf)
     _storesigaction!(newptr, sigact)
     systemerror("sigaction", _sigaction(signum, newptr, oldptr) != SUCCESS)
-    return _loadsigaction(oldptr)
+    old.flags = _getsigactionflags(oldptr)
+    old.handler = _getsigactionhandler(oldptr, old.flags)
+    old.mask = _getsigactionmask(oldptr)
+    return old
 end
 
 _sigaction(signum::Integer, act::Ptr{<:Union{UInt8,Void}}, old::Ptr{<:Union{UInt8,Void}}) =
@@ -456,12 +461,6 @@ function _storesigaction!(buf::Ptr{UInt8}, sigact::SigAction)
     _setsigactionmask!(buf, sigact.mask)
     _setsigactionflags!(buf, sigact.flags)
     return buf
-end
-
-function _loadsigaction(buf::Ptr{UInt8})
-    flags = _getsigactionflags(buf)
-    return SigAction(_getsigactionhandler(buf, flags),
-                     _getsigactionmask(buf), flags)
 end
 
 function _getsigactionhandler(buf::Ptr{UInt8}, flags::_typeof_sigaction_flags)
