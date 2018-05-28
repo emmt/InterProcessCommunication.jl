@@ -299,8 +299,7 @@ function Base.write(mem, ::Type{WrappedArrayHeader},
     # Check arguments, then write header and dimensions.
     hdr = WrappedArrayHeader(T, N)
     off = hdr.offset
-    siz = sizeof(mem)
-    ptr = pointer(mem)
+    ptr, siz = get_memory_parameters(mem)
     num = checkdims(dims)
     siz ≥ off + sizeof(T)*num ||
         throw_argument_error("insufficient size of memory block")
@@ -312,8 +311,7 @@ function Base.write(mem, ::Type{WrappedArrayHeader},
 end
 
 function Base.read(mem, ::Type{WrappedArrayHeader})
-    siz = sizeof(mem)
-    ptr = pointer(mem)
+    ptr, siz = get_memory_parameters(mem)
     siz ≥ sizeof(WrappedArrayHeader) ||
         throw_argument_error("insufficient size of memory block for header")
     hdr = unsafe_load(convert(Ptr{WrappedArrayHeader}, ptr))
