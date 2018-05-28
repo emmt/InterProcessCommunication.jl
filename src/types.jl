@@ -32,6 +32,26 @@ struct UserId
     value::_typeof_uid_t
 end
 
+# Counterpart of C `sigset_t` structure.
+mutable struct SigSet
+    bits::_typeof_sigset
+    SigSet() = fill!(new(), false)
+end
+
+# Counterpart of C `struct sigaction` structure.
+mutable struct SigAction
+    handler::Ptr{Void}
+    mask::SigSet
+    flags::_typeof_sigaction_flags
+end
+
+# Counterpart of C `siginfo_t` structure; although only a pointer of this is
+# ever used by signal handlers.
+struct SigInfo
+    bits::_typeof_siginfo
+    SigInfo() = fill!(new(), 0)
+end
+
 struct Key
     value::_typeof_key_t
     Key(value::Integer) = new(value)

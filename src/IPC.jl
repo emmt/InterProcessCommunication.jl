@@ -29,6 +29,9 @@ export
     ShmInfo,
     ShmMatrix,
     ShmVector,
+    SigAction,
+    SigInfo,
+    SigSet,
     TimeSpec,
     TimeVal,
     TimeoutError,
@@ -46,7 +49,10 @@ export
     shmid,
     shminfo!,
     shminfo,
+    sigaction,
     signal,
+    sigpending,
+    sigqueue,
     trywait
 
 const PARANOID = true
@@ -61,6 +67,7 @@ include("unix.jl")
 include("utils.jl")
 include("shm.jl")
 include("semaphores.jl")
+include("signals.jl")
 include("mutex.jl")
 
 @deprecate IPC_NEW IPC.PRIVATE

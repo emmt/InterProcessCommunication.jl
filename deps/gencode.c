@@ -25,6 +25,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
+
+#define TRUE  1
+#define FALSE 0
 
 #ifdef __APPLE__
 # define st_atim st_atimespec
@@ -38,12 +42,18 @@
 /* Determine whether an integer type is signed. */
 #define IS_SIGNED(type)        (~(type)0 < (type)0)
 
+/* Compare 2 integer types. */
+#define SAME_INTEGER_TYPE(a, b) (sizeof(a) == sizeof(b) && \
+                                 IS_SIGNED(a) == IS_SIGNED(b))
+
 /* Set all the bits of an L-value. */
 #define SET_ALL_BITS(lval) lval = 0; lval = ~lval
 
 /* Define a Julia constant. */
 #define DEF_CONST(name, format) \
   fprintf(output, "const " #name format "\n", name)
+#define DEF_CONST_CAST(name, format, type) \
+  fprintf(output, "const " #name format "\n", (type)name)
 
 /* Define a Julia alias for a C integer, given an L-value of the corresponding
  * type. */
@@ -85,6 +95,29 @@ static void error(const char* mesg)
   exit(1);
 }
 
+static void setofbits(FILE* output, const char* name,
+                      int size, int isunsigned)
+{
+  int nitems, nbits;
+
+  if (size % 8 == 0) {
+    nitems = size/8;
+    nbits = 64;
+  } else if (size % 4 == 0) {
+    nitems = size/4;
+    nbits = 32;
+  } else if (size % 2 == 0) {
+    nitems = size/2;
+    nbits = 16;
+  } else {
+    nitems = size;
+    nbits = 8;
+  }
+  fprintf(output, "const %s = NTuple{%d,%sInt%d}\n",
+          name, nitems, (isunsigned ? "U" : ""), nbits);
+}
+
+
 int main(int argc, char* argv[])
 {
   int status = 0;
@@ -102,6 +135,7 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Some standard C-types:\n");
   DEF_TYPEOF_TYPE(time_t, "   ");
+  DEF_TYPEOF_TYPE(clock_t, "  ");
   DEF_TYPEOF_TYPE(size_t, "   ");
   DEF_TYPEOF_TYPE(ssize_t, "  ");
   DEF_TYPEOF_TYPE(mode_t, "   ");
@@ -339,6 +373,394 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Constants for POSIX semaphores:\n");
   DEF_CONST(SEM_FAILED, "    = Cint(%p)");
+#endif
+
+  fprintf(output, "\n# Definitions for real-time signals:\n");
+  DEF_CONST(SIGRTMIN, " = Cint(%d)");
+  DEF_CONST(SIGRTMAX, " = Cint(%d)");
+  fprintf(output, "const _typeof_sigval_t  = Int%d\n",
+          8*(int)sizeof(union sigval));
+
+  setofbits(output, "_typeof_sigset", sizeof(sigset_t), TRUE);
+  DEF_SIZEOF_TYPE("sigset   ", sigset_t);
+
+  fprintf(output, "\n# Definitions for `struct sigaction`:\n");
+  {
+    struct sigaction sa;
+    DEF_SIZEOF_TYPE("sigaction", struct sigaction);
+    DEF_OFFSETOF("sigaction_handler", struct sigaction, sa_handler);
+    DEF_OFFSETOF("sigaction_action ", struct sigaction, sa_sigaction);
+    DEF_OFFSETOF("sigaction_mask   ", struct sigaction, sa_mask);
+    DEF_OFFSETOF("sigaction_flags  ", struct sigaction, sa_flags);
+#if 0 /* non-POSIX */
+    DEF_OFFSETOF("sigaction_restorer", struct sigaction, sa_restorer);
+#endif
+#if 1 /* force sigaction flags to be unsigned */
+    fprintf(output, "const _typeof_sigaction_flags     = UInt%d\n",
+            8*(int)sizeof(sa.sa_flags));
+#else
+    DEF_TYPEOF_LVALUE("sigaction_flags    ", sa.sa_flags);
+#endif
+  }
+
+  DEF_CONST(SA_SIGINFO, "   = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_NOCLDSTOP, " = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_NOCLDWAIT, " = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_NODEFER, "   = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_ONSTACK, "   = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_RESETHAND, " = _typeof_sigaction_flags(0x%08x)");
+  DEF_CONST(SA_RESTART, "   = _typeof_sigaction_flags(0x%08x)");
+
+  DEF_CONST_CAST(SIG_DFL, " = Ptr{Void}(%lu)", unsigned long);
+  DEF_CONST_CAST(SIG_IGN, " = Ptr{Void}(%lu)", unsigned long);
+
+  fprintf(output, "\n# Definitions for `siginfo_t`:\n");
+  {
+    siginfo_t si;
+    if (sizeof(si.si_signo) != sizeof(int)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_signo) != sizeof(int)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_code) != sizeof(int)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_code) != sizeof(int)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_errno) != sizeof(int)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_errno) != sizeof(int)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_pid) != sizeof(pid_t)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_pid) != sizeof(pid_t)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_uid) != sizeof(uid_t)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_uid) != sizeof(uid_t)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_status) != sizeof(int)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_status) != sizeof(int)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_value) != sizeof(sigval_t)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_value) != sizeof(sigval_t)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_addr) != sizeof(void*)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_addr) != sizeof(void*)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_band) != sizeof(long)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_band) != sizeof(long)\n");
+      exit(1);
+    }
+#if 0 /* Ignore non-POSIX members */
+    if (sizeof(si.si_utime) != sizeof(clock_t)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_utime) != sizeof(clock_t)\n");
+      exit(1);
+    }
+    if (sizeof(si.si_stime) != sizeof(clock_t)) {
+      fprintf(stderr, "sizeof((siginfo_t).si_stime) != sizeof(clock_t)\n");
+      exit(1);
+    }
+#endif
+  }
+  setofbits(output, "_typeof_siginfo", sizeof(siginfo_t), TRUE);
+  DEF_SIZEOF_TYPE("siginfo", siginfo_t);
+  DEF_OFFSETOF("siginfo_signo  ", siginfo_t, si_signo);
+  DEF_OFFSETOF("siginfo_code   ", siginfo_t, si_code);
+  DEF_OFFSETOF("siginfo_errno  ", siginfo_t, si_errno);
+  DEF_OFFSETOF("siginfo_pid    ", siginfo_t, si_pid);
+  DEF_OFFSETOF("siginfo_uid    ", siginfo_t, si_uid);
+  DEF_OFFSETOF("siginfo_status ", siginfo_t, si_status);
+  DEF_OFFSETOF("siginfo_value  ", siginfo_t, si_value);
+  DEF_OFFSETOF("siginfo_addr   ", siginfo_t, si_addr);
+  DEF_OFFSETOF("siginfo_band   ", siginfo_t, si_band);
+#if 0 /* Ignore non-POSIX members */
+  DEF_OFFSETOF("siginfo_utime  ", siginfo_t, si_utime);
+  DEF_OFFSETOF("siginfo_stime  ", siginfo_t, si_stime);
+  DEF_OFFSETOF("siginfo_int    ", siginfo_t, si_int);
+  DEF_OFFSETOF("siginfo_ptr    ", siginfo_t, si_ptr);
+  DEF_OFFSETOF("siginfo_overrun", siginfo_t, si_overrun);
+  DEF_OFFSETOF("siginfo_timerid", siginfo_t, si_timerid);
+  DEF_OFFSETOF("siginfo_fd     ", siginfo_t, si_fd);
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for regular signals:\n");
+#ifdef SI_USER
+  DEF_CONST(SI_USER, " = Cint(%d) # kill(2).");
+#endif
+#ifdef SI_KERNEL
+    DEF_CONST(SI_KERNEL, " = Cint(%d) # Sent by the kernel.");
+#endif
+#ifdef SI_QUEUE
+  DEF_CONST(SI_QUEUE, " = Cint(%d) # sigqueue(3).");
+#endif
+#ifdef SI_TIMER
+  DEF_CONST(SI_TIMER, " = Cint(%d) # POSIX timer expired.");
+#endif
+#ifdef SI_MESGQ
+  DEF_CONST(SI_MESGQ, " = Cint(%d) # POSIX message queue state changed; see mq_notify(3).");
+#endif
+#ifdef SI_ASYNCIO
+  DEF_CONST(SI_ASYNCIO, " = Cint(%d) # AIO completed.");
+#endif
+#ifdef SI_SIGIO
+  DEF_CONST(SI_SIGIO, " = Cint(%d) # Queued  SIGIO.");
+#endif
+#ifdef SI_TKILL
+  DEF_CONST(SI_TKILL, " = Cint(%d) # tkill(2) or tgkill(2).");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGILL signal:\n");
+#ifdef ILL_ILLOPC
+  DEF_CONST(ILL_ILLOPC, " = Cint(%d) # Illegal opcode.");
+#endif
+#ifdef ILL_ILLOPN
+  DEF_CONST(ILL_ILLOPN, " = Cint(%d) # Illegal operand.");
+#endif
+#ifdef ILL_ILLADR
+  DEF_CONST(ILL_ILLADR, " = Cint(%d) # Illegal addressing mode.");
+#endif
+#ifdef ILL_ILLTRP
+  DEF_CONST(ILL_ILLTRP, " = Cint(%d) # Illegal trap.");
+#endif
+#ifdef ILL_PRVOPC
+  DEF_CONST(ILL_PRVOPC, " = Cint(%d) # Privileged opcode.");
+#endif
+#ifdef ILL_PRVREG
+  DEF_CONST(ILL_PRVREG, " = Cint(%d) # Privileged register.");
+#endif
+#ifdef ILL_COPROC
+  DEF_CONST(ILL_COPROC, " = Cint(%d) # Coprocessor error.");
+#endif
+#ifdef ILL_BADSTK
+  DEF_CONST(ILL_BADSTK, " = Cint(%d) # Internal stack error.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGFPE signal:\n");
+#ifdef FPE_INTDIV
+  DEF_CONST(FPE_INTDIV, " = Cint(%d) # Integer divide by zero.");
+#endif
+#ifdef FPE_INTOVF
+  DEF_CONST(FPE_INTOVF, " = Cint(%d) # Integer overflow.");
+#endif
+#ifdef FPE_FLTDIV
+  DEF_CONST(FPE_FLTDIV, " = Cint(%d) # Floating-point divide by zero.");
+#endif
+#ifdef FPE_FLTOVF
+  DEF_CONST(FPE_FLTOVF, " = Cint(%d) # Floating-point overflow.");
+#endif
+#ifdef FPE_FLTUND
+  DEF_CONST(FPE_FLTUND, " = Cint(%d) # Floating-point underflow.");
+#endif
+#ifdef FPE_FLTRES
+  DEF_CONST(FPE_FLTRES, " = Cint(%d) # Floating-point inexact result.");
+#endif
+#ifdef FPE_FLTINV
+  DEF_CONST(FPE_FLTINV, " = Cint(%d) # Floating-point invalid operation.");
+#endif
+#ifdef FPE_FLTSUB
+  DEF_CONST(FPE_FLTSUB, " = Cint(%d) # Subscript out of range.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGSEGV signal:\n");
+#ifdef SEGV_MAPERR
+  DEF_CONST(SEGV_MAPERR, " = Cint(%d) # Address not mapped to object.");
+#endif
+#ifdef SEGV_ACCERR
+  DEF_CONST(SEGV_ACCERR, " = Cint(%d) # Invalid permissions for mapped object.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGBUS signal:\n");
+#ifdef BUS_ADRALN
+  DEF_CONST(BUS_ADRALN, " = Cint(%d) # Invalid address alignment.");
+#endif
+#ifdef BUS_ADRERR
+  DEF_CONST(BUS_ADRERR, " = Cint(%d) # Nonexistent physical address.");
+#endif
+#ifdef BUS_OBJERR
+  DEF_CONST(BUS_OBJERR, " = Cint(%d) # Object-specific hardware error.");
+#endif
+#ifdef BUS_MCEERR_AR
+  DEF_CONST(BUS_MCEERR_AR, " = Cint(%d) # Hardware memory error consumed on a machine check; action required.");
+#endif
+#ifdef BUS_MCEERR_AO
+  DEF_CONST(BUS_MCEERR_AO, " = Cint(%d) # Hardware memory error detected in process but not consumed; action optional.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGTRAP signal:\n");
+#ifdef TRAP_BRKPT
+  DEF_CONST(TRAP_BRKPT, " = Cint(%d) # Process breakpoint.");
+#endif
+#ifdef TRAP_TRACE
+  DEF_CONST(TRAP_TRACE, " = Cint(%d) # Process trace trap.");
+#endif
+#ifdef TRAP_BRANCH
+  DEF_CONST(TRAP_BRANCH, " = Cint(%d) # Process taken branch trap.");
+#endif
+#ifdef TRAP_HWBKPT
+  DEF_CONST(TRAP_HWBKPT, " = Cint(%d) # Hardware breakpoint/watchpoint.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGCHLD signal:\n");
+#ifdef CLD_EXITED
+  DEF_CONST(CLD_EXITED, " = Cint(%d) # Child has exited.");
+#endif
+#ifdef CLD_KILLED
+  DEF_CONST(CLD_KILLED, " = Cint(%d) # Child was killed.");
+#endif
+#ifdef CLD_DUMPED
+  DEF_CONST(CLD_DUMPED, " = Cint(%d) # Child terminated abnormally.");
+#endif
+#ifdef CLD_TRAPPED
+  DEF_CONST(CLD_TRAPPED, " = Cint(%d) # Traced child has trapped.");
+#endif
+#ifdef CLD_STOPPED
+  DEF_CONST(CLD_STOPPED, " = Cint(%d) # Child has stopped.");
+#endif
+#ifdef CLD_CONTINUED
+  DEF_CONST(CLD_CONTINUED, " = Cint(%d) # Stopped child has continued.");
+#endif
+
+  fprintf(output, "\n# Possible `si_code` values for a SIGIO/SIGPOLL signal:\n");
+#ifdef POLL_IN
+  DEF_CONST(POLL_IN, " = Cint(%d) # Data input available.");
+#endif
+#ifdef POLL_OUT
+  DEF_CONST(POLL_OUT, " = Cint(%d) # Output buffers available.");
+#endif
+#ifdef POLL_MSG
+  DEF_CONST(POLL_MSG, " = Cint(%d) # Input message available.");
+#endif
+#ifdef POLL_ERR
+  DEF_CONST(POLL_ERR, " = Cint(%d) # I/O error.");
+#endif
+#ifdef POLL_PRI
+  DEF_CONST(POLL_PRI, " = Cint(%d) # High priority input available.");
+#endif
+#ifdef POLL_HUP
+  DEF_CONST(POLL_HUP, " = Cint(%d) # Device disconnected.");
+#endif
+
+#ifdef SYS_SECCOMP
+  fprintf(output, "\n# Possible `si_code` value for a SIGSYS signal:\n");
+  DEF_CONST(SYS_SECCOMP, " = Cint(%d) # Triggered by a seccomp(2) filter rule.");
+#endif
+
+  fprintf(output, "\n# Predefined signal numbers:\n");
+#ifdef SIGHUP
+  DEF_CONST(SIGHUP, "    = Cint(%2d) # Hangup detected on controlling terminal or death of controlling process");
+#endif
+#ifdef SIGINT
+  DEF_CONST(SIGINT, "    = Cint(%2d) # Interrupt from keyboard");
+#endif
+#ifdef SIGQUIT
+  DEF_CONST(SIGQUIT, "   = Cint(%2d) # Quit from keyboard");
+#endif
+#ifdef SIGILL
+  DEF_CONST(SIGILL, "    = Cint(%2d) # Illegal Instruction");
+#endif
+#ifdef SIGABRT
+  DEF_CONST(SIGABRT, "   = Cint(%2d) # Abort signal from abort(3)");
+#endif
+#ifdef SIGFPE
+  DEF_CONST(SIGFPE, "    = Cint(%2d) # Floating point exception");
+#endif
+#ifdef SIGKILL
+  DEF_CONST(SIGKILL, "   = Cint(%2d) # Kill signal");
+#endif
+#ifdef SIGSEGV
+  DEF_CONST(SIGSEGV, "   = Cint(%2d) # Invalid memory reference");
+#endif
+#ifdef SIGPIPE
+  DEF_CONST(SIGPIPE, "   = Cint(%2d) # Broken pipe: write to pipe with no readers");
+#endif
+#ifdef SIGALRM
+  DEF_CONST(SIGALRM, "   = Cint(%2d) # Timer signal from alarm(2)");
+#endif
+#ifdef SIGTERM
+  DEF_CONST(SIGTERM, "   = Cint(%2d) # Termination signal");
+#endif
+#ifdef SIGUSR
+  DEF_CONST(SIGUSR1, "   = Cint(%2d) # User-defined signal 1");
+#endif
+#ifdef SIGUSR
+  DEF_CONST(SIGUSR2, "   = Cint(%2d) # User-defined signal 2");
+#endif
+#ifdef SIGCHLD
+  DEF_CONST(SIGCHLD, "   = Cint(%2d) # Child stopped or terminated");
+#endif
+#ifdef SIGCONT
+  DEF_CONST(SIGCONT, "   = Cint(%2d) # Continue if stopped");
+#endif
+#ifdef SIGSTOP
+  DEF_CONST(SIGSTOP, "   = Cint(%2d) # Stop process");
+#endif
+#ifdef SIGTSTP
+  DEF_CONST(SIGTSTP, "   = Cint(%2d) # Stop typed at terminal");
+#endif
+#ifdef SIGTTIN
+  DEF_CONST(SIGTTIN, "   = Cint(%2d) # Terminal input for background process");
+#endif
+#ifdef SIGTTOU
+  DEF_CONST(SIGTTOU, "   = Cint(%2d) # Terminal output for background process");
+#endif
+#ifdef SIGBUS
+  DEF_CONST(SIGBUS, "    = Cint(%2d) # Bus error (bad memory access)");
+#endif
+#ifdef SIGPOLL
+  DEF_CONST(SIGPOLL, "   = Cint(%2d) # Pollable event (Sys V).  Synonym for SIGIO");
+#endif
+#ifdef SIGPROF
+  DEF_CONST(SIGPROF, "   = Cint(%2d) # Profiling timer expired");
+#endif
+#ifdef SIGSYS
+  DEF_CONST(SIGSYS, "    = Cint(%2d) # Bad argument to routine (SVr4)");
+#endif
+#ifdef SIGTRAP
+  DEF_CONST(SIGTRAP, "   = Cint(%2d) # Trace/breakpoint trap");
+#endif
+#ifdef SIGURG
+  DEF_CONST(SIGURG, "    = Cint(%2d) # Urgent condition on socket (4.2BSD)");
+#endif
+#ifdef SIGVTALRM
+  DEF_CONST(SIGVTALRM, " = Cint(%2d) # Virtual alarm clock (4.2BSD)");
+#endif
+#ifdef SIGXCPU
+  DEF_CONST(SIGXCPU, "   = Cint(%2d) # CPU time limit exceeded (4.2BSD)");
+#endif
+#ifdef SIGXFSZ
+  DEF_CONST(SIGXFSZ, "   = Cint(%2d) # File size limit exceeded (4.2BSD)");
+#endif
+#ifdef SIGIOT
+  DEF_CONST(SIGIOT, "    = Cint(%2d) # IOT trap. A synonym for SIGABRT");
+#endif
+#ifdef SIGEMT
+  DEF_CONST(SIGEMT, "    = Cint(%2d) # ");
+#endif
+#ifdef SIGSTKFLT
+  DEF_CONST(SIGSTKFLT, " = Cint(%2d) # Stack fault on coprocessor (unused)");
+#endif
+#ifdef SIGIO
+  DEF_CONST(SIGIO, "     = Cint(%2d) # I/O now possible (4.2BSD)");
+#endif
+#ifdef SIGCLD
+  DEF_CONST(SIGCLD, "    = Cint(%2d) # A synonym for SIGCHLD");
+#endif
+#ifdef SIGPWR
+  DEF_CONST(SIGPWR, "    = Cint(%2d) # Power failure (System V)");
+#endif
+#ifdef SIGINFO
+  DEF_CONST(SIGINFO, "   = Cint(%2d) # A synonym for SIGPWR");
+#endif
+#ifdef SIGLOST
+  DEF_CONST(SIGLOST, "   = Cint(%2d) # File lock lost (unused)");
+#endif
+#ifdef SIGWINCH
+  DEF_CONST(SIGWINCH, "  = Cint(%2d) # Window resize signal (4.3BSD, Sun)");
+#endif
+#ifdef SIGUNUSED
+  DEF_CONST(SIGUNUSED, " = Cint(%2d) # Synonymous with SIGSYS");
 #endif
 
   return 0;
