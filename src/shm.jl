@@ -135,7 +135,9 @@ function SharedMemory(name::AbstractString,
 
     # Create a new POSIX shared memory object?
     create = ((flags & O_CREAT) != 0)
-    create && len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
+    if create
+        len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
+    end
 
     # Open shared memory and set or get its size.
     fd = _shm_open(name, flags, mode)
