@@ -1,14 +1,15 @@
 # Semaphores
 
 A semaphore is associated with an integer value which is never allowed to fall
-below zero.  Two operations can be performed on semaphores: increment the
-semaphore value by one with `post(sem)`; and decrement the semaphore value by
-one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
+below zero.  Two operations can be performed on a semaphore `sem`: increment
+the semaphore value by one with `post(sem)`; and decrement the semaphore value
+by one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
 `wait(sem)` call will block until the value becomes greater than zero.
 
 There are two kinds of semaphores: *named* and *anonymous* semaphores.
-[Named semaphores](#named-semaphores) are identified by their name while
-[anonymous semaphores](#anonymous-semaphores) are backed by *memory* objects
+[Named semaphores](#named-semaphores) are identified by their name which is a
+string of the form `"/somename"`.
+[Anonymous semaphores](#anonymous-semaphores) are backed by *memory* objects
 (usually shared memory) providing the necessary storage.  In Julia IPC package,
 semaphores are instances of `Semaphore{T}` where `T` is `String` for named
 semaphores and the type of the backing memory object for anonymous semaphores.
@@ -38,7 +39,7 @@ Semaphore(name) -> sem
 
 which yields an instance of `Semaphore{String}`.
 
-To unlink (remove) a named semaphore, simply do:
+To unlink (remove) a persistent named semaphore, simply do:
 
 ```julia
 rm(Semaphore, name)
@@ -51,14 +52,14 @@ For maximum flexibility, an instance of a named semaphore may also be created
 by:
 
 ```julia
-open(Semaphore, name, flags, mode, val, volatile) -> sem
+open(Semaphore, name, flags, mode, value, volatile) -> sem
 ```
 
 where `flags` may have the bits `IPC.O_CREAT` and `IPC.O_EXCL` set, `mode`
-specifies the granted access permissions, `val` is the initial semaphore value
-and `volatile` is a boolean indicating whether the semaphore should be unlinked
-when the returned object `sem` is garbage collected.  The values of `mode` and
-`val` are ignored if an existing named semaphore is open.
+specifies the granted access permissions, `value` is the initial semaphore
+value and `volatile` is a boolean indicating whether the semaphore should be
+unlinked when the returned object `sem` is garbage collected.  The values of
+`mode` and `value` are ignored if an existing named semaphore is open.
 
 
 ## Anonymous Semaphores
@@ -77,19 +78,25 @@ initial value set to `value` and returns an instance of
 `Semaphore{typeof(mem)}`.  Keyword `offset` can be used to specify the address
 (in bytes) of the semaphore data relative to `pointer(mem)`.  Keyword
 `volatile` specify whether the semaphore should be destroyed when the returned
-object is garbage collected.  The number of bytes needed to store a semaphore
-is given by `sizeof(Semaphore)`.
+object is garbage collected.
+
+The number of bytes needed to store an anonymous semaphore is given by
+`sizeof(Semaphore)` and anonymous semaphore must be aligned in memory at
+multiples of the word size (that is `Sys.WORD_SIZE >> 3` in bytes).  Memory
+objects used to store an anonymous semaphore must implement two methods:
+`pointer(mem)` and `sizeof(mem)` to yield respectively the base address and the
+size (in bytes) of the associated memory.
 
 Another process (or thread) can use an existing (initialized) anonymous
 semaphore backed by calling:
 
 ```julia
-Semaphore(mem; offset=off) -> sem
+Semaphore(mem; offset=0) -> sem
 ```
 
 where `mem` is the memory object which provides the storage of the semaphore at
-relative position `off`(the default value of `offset` is zero) and which yields
-an an instance of `Semaphore{typeof(mem)}`
+relative position specified by keyword `offset` zero by default).  The returned
+value is an instance of `Semaphore{typeof(mem)}`
 
 
 ## Operations on Semaphores
@@ -111,12 +118,13 @@ typemin(Semaphore)
 typemax(Semaphore)
 ```
 
-To allocate memory for anonymous semaphores, you need to know the number of bytes
-need to store a semaphore.  This is given by:
+To allocate memory for anonymous semaphores, you need to know the number of
+bytes need to store a semaphore.  This is given by:
 
 ```julia
 sizeof(Semaphore)
 ```
+
 
 ### Post and Wait
 
