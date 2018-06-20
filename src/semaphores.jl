@@ -177,8 +177,11 @@ function _get_semaphore_address(mem, off::Integer)::Ptr{Void}
     ptr, siz = get_memory_parameters(mem)
     siz ≥ off + _sizeof_sem_t ||
         throw_argument_error("not enough memory at given offset")
-    # FIXME: check alignment?
-    return ptr + off
+    ptr += off
+    align = (Sys.WORD_SIZE >> 3) # assume alignment is word size (in bytes)
+    rem(convert(Int, ptr), align) == 0 ||
+        throw_argument_error("address of semaphore must be a multiple of $align bytes")
+    return ptr
 end
 
 # Finalize a named semaphore.
