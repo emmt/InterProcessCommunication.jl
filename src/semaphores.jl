@@ -10,36 +10,6 @@
 #
 
 """
-# Semaphores
-
-A semaphore is associated with an integer value which is never allowed to fall
-below zero.  Two operations can be performed on a semaphore `sem`: increment the
-semaphore value by one with `post(sem)`; and decrement the semaphore value by
-one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
-`wait(sem)` call will block until the value becomes greater than zero.
-
-There are two kinds of semaphores: *named* and *anonymous* semaphores.  Named
-semaphores are identified by their name which is a string of the form
-`"/somename"`.  Anonymous semaphores are backed by *memory* objects (usually
-shared memory) providing the necessary storage.  In Julia IPC package,
-semaphores are instances of `Semaphore{T}` where `T` is `String` for named
-semaphores and the type of the backing memory object for anonymous semaphores.
-
-To query the value of semaphore `sem`, do:
-
-```julia
-sem[]
-```
-
-Beware that the value of the semaphore may already have changed by the time the
-result is returned.  The minimal and maximal values that can take a semaphore
-are given by:
-
-```julia
-typemin(Semaphore)
-typemax(Semaphore)
-```
-
 ## Named Semaphores
 
 ```julia
@@ -68,6 +38,19 @@ rm(Semaphore, name)
 If the semaphore does not exists, the error is ignored.  A `SystemError` is
 however thrown for other errors.
 
+For maximum flexibility, an instance of a named semaphore may also be created
+by:
+
+```julia
+open(Semaphore, name, flags, mode, value, volatile) -> sem
+```
+
+where `flags` may have the bits `IPC.O_CREAT` and `IPC.O_EXCL` set, `mode`
+specifies the granted access permissions, `value` is the initial semaphore
+value and `volatile` is a boolean indicating whether the semaphore should be
+unlinked when the returned object `sem` is garbage collected.  The values of
+`mode` and `value` are ignored if an existing named semaphore is open.
+
 
 ## Anonymous Semaphores
 
@@ -90,13 +73,14 @@ Semaphore(mem; offset=0) -> sem
 
 yields an an instance of `Semaphore{typeof(mem)}` associated with an
 initialized anonymous semaphore and backed by memory object `mem` at relative
-offset `offset`.
+position (in bytes) specified by keyword `offset`.
 
-To figure out the number of bytes needed to store a semaphore, simply call:
-
-```julia
-sizeof(Semaphore)
-```
+The number of bytes needed to store an anonymous semaphore is given by
+`sizeof(Semaphore)` and anonymous semaphore must be aligned in memory at
+multiples of the word size (that is `Sys.WORD_SIZE >> 3` in bytes).  Memory
+objects used to store an anonymous semaphore must implement two methods:
+`pointer(mem)` and `sizeof(mem)` to yield respectively the base address and the
+size (in bytes) of the associated memory.
 
 See also: [`post`](@ref), [`wait`](@ref), [`timedwait`](@ref),
           [`trywait`](@ref).
