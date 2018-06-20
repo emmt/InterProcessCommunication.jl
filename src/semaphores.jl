@@ -13,11 +13,10 @@
 # Semaphores
 
 A semaphore is associated with an integer value which is never allowed to fall
-below zero.  Two operations can be performed on semaphores: increment the
+below zero.  Two operations can be performed on a semaphore `sem`: increment the
 semaphore value by one with `post(sem)`; and decrement the semaphore value by
 one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
-`wait(sem)` call will block until the value becomes greater than zero.  The
-method `getvalue(sem)` yields the current value of the semaphore.
+`wait(sem)` call will block until the value becomes greater than zero.
 
 There are two kinds of semaphores: *named* and *anonymous* semaphores.  Named
 semaphores are identified by their name which is a string of the form
@@ -100,7 +99,7 @@ sizeof(Semaphore)
 ```
 
 See also: [`post`](@ref), [`wait`](@ref), [`timedwait`](@ref),
-[`trywait`](@ref).
+          [`trywait`](@ref).
 
 """
 function Semaphore(name::AbstractString, value::Integer;
@@ -217,7 +216,7 @@ consequently becomes greater than zero, then another process or thread blocked
 in a [`wait`](@ref) call will be woken up and proceed to lock the semaphore.
 
 See also: [`Semaphore`](@ref), [`wait`](@ref), [`timedwait`](@ref),
-[`trywait`](@ref).
+          [`trywait`](@ref).
 
 """
 post(sem::Semaphore) =
@@ -237,7 +236,7 @@ instance of `InterruptException` is thrown).  A `SystemError` may be thrown if
 an unexpected error occurs.
 
 See also: [`Semaphore`](@ref), [`post`](@ref), [`timedwait`](@ref),
-[`trywait`](@ref).
+          [`trywait`](@ref).
 
 """
 function Base.wait(sem::Semaphore)
@@ -265,7 +264,8 @@ rises above zero), or the limit of `secs` seconds expires (in which case an
 instance of `TimeoutError` is thrown), or a signal handler interrupts the call
 (in which case an instance of `InterruptException` is thrown).
 
-See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),  [`trywait`](@ref).
+See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),
+          [`trywait`](@ref).
 
 """
 Base.timedwait(sem::Semaphore, secs::Real) =
@@ -297,7 +297,8 @@ returns `false`.  If an interruption is received or if an unexpected error
 occurs, an exception is thrown (`InterruptException` or `SystemError`
 repectively).
 
-See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),  [`timedwait`](@ref).
+See also: [`Semaphore`](@ref), [`post`](@ref), [`wait`](@ref),
+          [`timedwait`](@ref).
 
 """
 function trywait(sem::Semaphore)
