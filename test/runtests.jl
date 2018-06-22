@@ -8,35 +8,6 @@ else
     using Test
 end
 
-mutable struct DynamicMemory # <: IPC.MemoryBlock
-    ptr::Ptr{Void}
-    len::Int
-    function DynamicMemory(len::Integer)
-        @assert len ≥ 1
-        ptr = Libc.malloc(len)
-        ptr != C_NULL || throw(OutOfMemoryError())
-        obj = new(ptr, len)
-        finalizer(obj, _destroy)
-        return obj
-    end
-end
-
-function _destroy(obj::DynamicMemory)
-    if (ptr = obj.ptr) != C_NULL
-        obj.len = 0
-        obj.ptr = C_NULL
-        Libc.free(ptr)
-    end
-end
-
-Base.sizeof(obj::DynamicMemory) = obj.len
-Base.pointer(obj::DynamicMemory) = obj.ptr
-Base.convert(::Type{Ptr{Void}}, obj::DynamicMemory) = obj.ptr
-Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
-    convert(Ptr{T}, obj.ptr)
-Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
-    convert(Ptr{T}, obj.ptr)
-
 @testset "Basic Functions       " begin
     pid = IPC.getpid()
     @test pid.value == getpid()

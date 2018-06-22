@@ -305,3 +305,22 @@ end
     _poke!(convert(Ptr{T}, ptr), val)
 @inline _poke!(::Type{T}, ptr::Ptr, off::Integer, val) where {T} =
     _poke!(T, ptr + off, val)
+
+#------------------------------------------------------------------------------
+# DYNAMIC MEMORY OBJECTS
+
+function _destroy(obj::DynamicMemory)
+    if (ptr = obj.ptr) != C_NULL
+        obj.len = 0
+        obj.ptr = C_NULL
+        Libc.free(ptr)
+    end
+end
+
+Base.sizeof(obj::DynamicMemory) = obj.len
+Base.pointer(obj::DynamicMemory) = obj.ptr
+Base.convert(::Type{Ptr{Void}}, obj::DynamicMemory) = obj.ptr
+Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
+    convert(Ptr{T}, obj.ptr)
+Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
+    convert(Ptr{T}, obj.ptr)

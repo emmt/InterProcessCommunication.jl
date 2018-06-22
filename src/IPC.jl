@@ -19,6 +19,7 @@ import Base: convert, unsafe_convert,
 export
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
+    DynamicMemory,
     FileDescriptor,
     FileStat,
     IPC_NEW,

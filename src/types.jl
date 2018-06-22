@@ -109,6 +109,19 @@ end
 
 abstract type MemoryBlock end
 
+mutable struct DynamicMemory <: MemoryBlock
+    ptr::Ptr{Void}
+    len::Int
+    function DynamicMemory(len::Integer)
+        @assert len ≥ 1
+        ptr = Libc.malloc(len)
+        ptr != C_NULL || throw(OutOfMemoryError())
+        obj = new(ptr, len)
+        finalizer(obj, _destroy)
+        return obj
+    end
+end
+
 mutable struct SharedMemory{T<:Union{String,ShmId}} <: MemoryBlock
     ptr::Ptr{Void} # mapped address of shared memory segment
     len::Int       # size of shared memory segment (in bytes)
