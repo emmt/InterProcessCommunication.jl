@@ -146,9 +146,9 @@ function Base.rm(::Type{Semaphore}, name::AbstractString)
     end
 end
 
-Base.sizeof(::Type{Semaphore}) = _sizeof_sem_t
-Base.typemin(::Type{Semaphore}) = zero(Cuint)
-Base.typemax(::Type{Semaphore}) = SEM_VALUE_MAX
+Base.sizeof(::Type{<:Semaphore}) = _sizeof_sem_t
+Base.typemin(::Type{<:Semaphore}) = zero(Cuint)
+Base.typemax(::Type{<:Semaphore}) = SEM_VALUE_MAX
 
 function _check_semaphore_value(value::Integer)
     typemin(Semaphore) ≤ value ≤ typemax(Semaphore) ||
