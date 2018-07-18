@@ -40,7 +40,7 @@
 #define OFFSET_OF(type, field) ((char*)&((type*)0)->field - (char*)0)
 
 /* Determine whether an integer type is signed. */
-#define IS_SIGNED(type)        (~(type)0 < (type)0)
+#define IS_SIGNED(type)        ((type)(~(type)0) < (type)0)
 
 /* Compare 2 integer types. */
 #define SAME_INTEGER_TYPE(a, b) (sizeof(a) == sizeof(b) && \
