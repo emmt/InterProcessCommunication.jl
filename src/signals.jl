@@ -312,7 +312,7 @@ function sigwait!(mask::SigSet, info::SigInfo, timeout::TimeSpec)
 end
 
 _sigwait(mask::Ref{SigSet}, signum::Ref{Cint}) =
-    ccall(:sigwait, Cint, (Ptr{Void}, Ptr{Cint}), mask, signum)
+    ccall(:sigwait, Cint, (Ptr{Cvoid}, Ptr{Cint}), mask, signum)
 
 _sigwaitinfo(set::Ref{SigSet}, info::Ref{SigInfo}) =
     ccall(:sigwaitinfo, Cint, (Ptr{SigSet}, Ptr{SigInfo}), set, info)
@@ -389,7 +389,7 @@ by [`cfunction`](@ref).  If `IPC.SA_INFO` is not set in `sa.flags`, then the
 signature of the handler is:
 
 ``julia
-function handler(signum::Cint)::Void
+function handler(signum::Cint)::Nothing
 ```
 
 that is a function which takes a single argument of type `Cint` and returns
@@ -397,11 +397,11 @@ nothing; if `IPC.SA_INFO` is not set in `sa.flags`, then the signature of the
 handler is:
 
 ``julia
-function handler(signum::Cint, siginf::Ptr{SigInfo}, unused::Ptr{Void})::Void
+function handler(signum::Cint, siginf::Ptr{SigInfo}, unused::Ptr{Cvoid})::Nothing
 ```
 
 that is a function which takes 3 arguments of type `Cint`, `Ptr{SigInfo}`,
-`Ptr{Void}` repectively and which returns nothing.  See [`SigInfo`](@ref)
+`Ptr{Cvoid}` repectively and which returns nothing.  See [`SigInfo`](@ref)
 for a description of the `siginf` argument by the handler.
 
 See also: [`SigInfo`](@ref).
@@ -414,7 +414,7 @@ See also: [`SigInfo`](@ref).
 SigAction() = SigAction(C_NULL, SigSet(), 0)
 
 function Base.show(io::IO, obj::SigAction)
-    print(io, "SigAction(handler=Ptr{Void}(")
+    print(io, "SigAction(handler=Ptr{Cvoid}(")
     @printf(io, "%p", obj.handler)
     print(io, "), mask=SigSet(....), flags=0x", hex(obj.flags), ")")
 end
@@ -450,48 +450,47 @@ function sigaction!(signum::Integer, sigact::SigAction, old::SigAction)
     return old
 end
 
-_sigaction(signum::Integer, act::Ptr{<:Union{UInt8,Void}}, old::Ptr{<:Union{UInt8,Void}}) =
-    ccall(:sigaction, Cint, (Cint, Ptr{Void}, Ptr{Void}), signum, act, old)
+_sigaction(signum::Integer, act::Ptr{<:Union{UInt8,Nothing}}, old::Ptr{<:Union{UInt8,Nothing}}) =
+    ccall(:sigaction, Cint, (Cint, Ptr{Cvoid}, Ptr{Cvoid}), signum, act, old)
 
-_sigactionbuffer() =
-    fill!(Array{UInt8}(_sizeof_sigaction),0)
+_sigactionbuffer() = zeros(UInt8, _sizeof_sigaction)
 
-function _storesigaction!(buf::Ptr{UInt8}, sigact::SigAction)
-    _setsigactionhandler!(buf, sigact.handler, sigact.flags)
-    _setsigactionmask!(buf, sigact.mask)
-    _setsigactionflags!(buf, sigact.flags)
-    return buf
+function _storesigaction!(ptr::Ptr{UInt8}, sigact::SigAction)
+    _setsigactionhandler!(ptr, sigact.handler, sigact.flags)
+    _setsigactionmask!(ptr, sigact.mask)
+    _setsigactionflags!(ptr, sigact.flags)
+    return ptr
 end
 
-function _getsigactionhandler(buf::Ptr{UInt8}, flags::_typeof_sigaction_flags)
+function _getsigactionhandler(ptr::Ptr{UInt8}, flags::_typeof_sigaction_flags)
     offset = ((flags & SA_SIGINFO) == SA_SIGINFO ?
               _offsetof_sigaction_action :
               _offsetof_sigaction_handler)
-    return _peek(Ptr{Void}, buf + offset)
+    return _peek(Ptr{Cvoid}, ptr + offset)
 end
 
-function _setsigactionhandler!(buf::Ptr{UInt8}, handler::Ptr{Void},
+function _setsigactionhandler!(ptr::Ptr{UInt8}, handler::Ptr{Cvoid},
                                flags::_typeof_sigaction_flags)
     offset = ((flags & SA_SIGINFO) == SA_SIGINFO ?
               _offsetof_sigaction_action :
               _offsetof_sigaction_handler)
-    _poke!(Ptr{Void}, buf + offset, handler)
+    _poke!(Ptr{Cvoid}, ptr + offset, handler)
 end
 
-_setsigactionaction!(buf::Ptr{UInt8}, ptr::Ptr{Void}) =
-    _poke!(Ptr{Void}, buf + _offsetof_sigaction_action, ptr)
+_setsigactionaction!(ptr::Ptr{UInt8}, action::Ptr{Cvoid}) =
+    _poke!(Ptr{Cvoid}, ptr + _offsetof_sigaction_action, action)
 
-_getsigactionmask(buf::Ptr{UInt8}) =
-    _peek(SigSet, buf + _offsetof_sigaction_mask)
+_getsigactionmask(ptr::Ptr{UInt8}) =
+    _peek(SigSet, ptr + _offsetof_sigaction_mask)
 
-_setsigactionmask!(buf::Ptr{UInt8}, mask::SigSet) =
-    _poke!(SigSet, buf + _offsetof_sigaction_mask, mask)
+_setsigactionmask!(ptr::Ptr{UInt8}, mask::SigSet) =
+    _poke!(SigSet, ptr + _offsetof_sigaction_mask, mask)
 
-_getsigactionflags(buf::Ptr{UInt8}) =
-    _peek(_typeof_sigaction_flags, buf + _offsetof_sigaction_flags)
+_getsigactionflags(ptr::Ptr{UInt8}) =
+    _peek(_typeof_sigaction_flags, ptr + _offsetof_sigaction_flags)
 
-_setsigactionflags!(buf::Ptr{UInt8}, flags::Integer) =
-    _poke!(_typeof_sigaction_flags, buf + _offsetof_sigaction_flags, flags)
+_setsigactionflags!(ptr::Ptr{UInt8}, flags::Integer) =
+    _poke!(_typeof_sigaction_flags, ptr + _offsetof_sigaction_flags, flags)
 
 
 """
@@ -507,7 +506,8 @@ members of the corresponding C `siginfo_t` structure are retrieved by:
 ```julia
 IPC.siginfo_signo(ptr)  # Signal number.
 IPC.siginfo_code(ptr)   # Signal code.
-IPC.siginfo_errno(ptr)  # If non-zero, an errno value associated with this signal.
+IPC.siginfo_errno(ptr)  # If non-zero, an errno value associated with this
+                        # signal.
 IPC.siginfo_pid(ptr)    # Sending process ID.
 IPC.siginfo_uid(ptr)    # Real user ID of sending process.
 IPC.siginfo_addr(ptr)   # Address of faulting instruction.
@@ -558,7 +558,7 @@ siginfo_value(ptr::Ptr{SigInfo}) =
     _peek(_typeof_sigval_t, ptr + _offsetof_siginfo_value)
 
 siginfo_addr(ptr::Ptr{SigInfo}) =
-    _peek(Ptr{Void}, ptr + _offsetof_siginfo_addr)
+    _peek(Ptr{Cvoid}, ptr + _offsetof_siginfo_addr)
 
 siginfo_band(ptr::Ptr{SigInfo}) =
     _peek(Clong, ptr + _offsetof_siginfo_band)
@@ -571,7 +571,7 @@ siginfo_band(ptr::Ptr{SigInfo}) =
 # siginfo_int(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_int)
 # siginfo_ptr(ptr::Ptr{SigInfo}) =
-#     _peek(Ptr{Void}, ptr + _offsetof_siginfo_ptr)
+#     _peek(Ptr{Cvoid}, ptr + _offsetof_siginfo_ptr)
 # siginfo_overrun(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_overrun)
 # siginfo_timerid(ptr::Ptr{SigInfo}) =
@@ -581,7 +581,7 @@ siginfo_band(ptr::Ptr{SigInfo}) =
 # siginfo_addr_lsb(ptr::Ptr{SigInfo}) =
 #     _peek(Cshort, ptr + _offsetof_siginfo_)
 # siginfo_call_addr(ptr::Ptr{SigInfo}) =
-#     _peek(Ptr{Void}, ptr + _offsetof_siginfo_)
+#     _peek(Ptr{Cvoid}, ptr + _offsetof_siginfo_)
 # siginfo_syscall(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_)
 # siginfo_arch(ptr::Ptr{SigInfo}) =

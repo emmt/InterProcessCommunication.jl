@@ -108,9 +108,9 @@ function Base.open(::Type{Semaphore}, name::AbstractString, flags::Integer,
     systemerror("sem_open", ptr == SEM_FAILED)
     sem = Semaphore{String}(ptr, name)
     if volatile
-        finalizer(sem, _close_and_unlink)
+        finalizer(_close_and_unlink, sem,)
     else
-        finalizer(sem, _close)
+        finalizer(_close, sem)
     end
     return sem
 end
@@ -125,7 +125,7 @@ function Semaphore(mem::M, value::Integer;
                 _sem_init(ptr, true, val) != SUCCESS)
     sem = Semaphore{M}(ptr, mem)
     if volatile
-        finalizer(sem, _destroy)
+        finalizer(_destroy, sem)
     end
     return sem
 end
@@ -156,7 +156,7 @@ function _check_semaphore_value(value::Integer)
     return convert(Cuint, value)
 end
 
-function _get_semaphore_address(mem, off::Integer)::Ptr{Void}
+function _get_semaphore_address(mem, off::Integer)::Ptr{Cvoid}
     off ≥ 0 || throw_argument_error("offset must be nonnegative ($off)")
     ptr, siz = get_memory_parameters(mem)
     siz ≥ off + _sizeof_sem_t ||
@@ -190,8 +190,6 @@ function Base.getindex(sem::Semaphore)
     return val[]
 end
 
-Base.convert(::Type{T}, sem::Semaphore) where {T<:Integer} =
-    convert(T, sem[])
 
 """
 ```julia

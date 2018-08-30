@@ -23,19 +23,17 @@ See also: [`IPC.Condition`](@ref), [`lock`](@ref), [`unlock`](@ref),
 
 """
 mutable struct Mutex
-    handle::Ptr{Void}
+    handle::Ptr{Cvoid}
     function Mutex()
         buf = Libc.malloc(_sizeof_pthread_mutex_t)
         buf != C_NULL || throw(OutOfMemoryError())
-        if ccall(:pthread_mutex_init, Cint, (Ptr{Void}, Ptr{Void}),
+        if ccall(:pthread_mutex_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
                  buf, C_NULL) != SUCCESS
             # In principle, `pthread_mutex_init` should always return 0.
             Libc.free(buf)
             throw_system_error("pthread_mutex_init")
         end
-        obj = new(buf)
-        finalizer(obj, _destroy)
-        return obj
+        return finalizer(_destroy, new(buf))
     end
 end
 
@@ -50,25 +48,23 @@ automatically destroy when the returned object is grabage collected.
 See also: [`IPC.Mutex`](@ref).
 """
 mutable struct Condition
-    handle::Ptr{Void}
+    handle::Ptr{Cvoid}
     function Condition()
         buf = Libc.malloc(_sizeof_pthread_cond_t)
         buf != C_NULL || throw(OutOfMemoryError())
-        if ccall(:pthread_cond_init, Cint, (Ptr{Void}, Ptr{Void}),
+        if ccall(:pthread_cond_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
                  buf, C_NULL) != SUCCESS
             Libc.free(buf)
             throw_system_error("pthread_cond_init")
         end
-        obj = new(buf)
-        finalizer(obj, _destroy)
-        return obj
+        return finalizer(_destroy, new(buf))
     end
 end
 
 function _destroy(obj::Mutex)
     if (ptr = obj.handle) != C_NULL
         obj.handle = C_NULL
-        ccall(:pthread_mutex_destroy, Cint, (Ptr{Void},), ptr)
+        ccall(:pthread_mutex_destroy, Cint, (Ptr{Cvoid},), ptr)
         Libc.free(ptr)
     end
 end
@@ -76,7 +72,7 @@ end
 function _destroy(obj::Condition)
     if (ptr = obj.handle) != C_NULL
         obj.handle = C_NULL
-        ccall(:pthread_cond_destroy, Cint, (Ptr{Void},), ptr)
+        ccall(:pthread_cond_destroy, Cint, (Ptr{Cvoid},), ptr)
         Libc.free(ptr)
     end
 end
@@ -86,30 +82,30 @@ Base.pointer(obj::Condition) = obj.handle
 
 Base.lock(mutex::Mutex) =
     systemerror("pthread_mutex_lock",
-                ccall(:pthread_mutex_lock, Cint, (Ptr{Void},),
+                ccall(:pthread_mutex_lock, Cint, (Ptr{Cvoid},),
                       mutex.handle) != SUCCESS)
 
 Base.unlock(mutex::Mutex) =
     systemerror("pthread_mutex_unlock",
-                ccall(:pthread_mutex_unlock, Cint, (Ptr{Void},),
+                ccall(:pthread_mutex_unlock, Cint, (Ptr{Cvoid},),
                       mutex.handle) != SUCCESS)
 
 Base.trylock(mutex::Mutex) =
-    (ccall(:pthread_mutex_trylock, Cint, (Ptr{Void},), mutex.handle) == SUCCESS)
+    (ccall(:pthread_mutex_trylock, Cint, (Ptr{Cvoid},), mutex.handle) == SUCCESS)
 
 signal(cond::Condition) =
     systemerror("pthread_cond_signal",
-                ccall(:pthread_cond_signal, Cint, (Ptr{Void},),
+                ccall(:pthread_cond_signal, Cint, (Ptr{Cvoid},),
                       cond.handle) != SUCCESS)
 
 Base.broadcast(cond::Condition) =
     systemerror("pthread_cond_broadcast",
-                ccall(:pthread_cond_broadcast, Cint, (Ptr{Void},),
+                ccall(:pthread_cond_broadcast, Cint, (Ptr{Cvoid},),
                       cond.handle) != SUCCESS)
 
 Base.wait(cond::Condition, mutex::Mutex) =
     systemerror("pthread_cond_wait",
-                ccall(:pthread_cond_wait, Cint, (Ptr{Void}, Ptr{Void}),
+                ccall(:pthread_cond_wait, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
                       cond.handle, mutex.handle) != SUCCESS)
 
 """
@@ -149,7 +145,7 @@ end
 
 function Base.timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
     status = ccall(:pthread_cond_timedwait, Cint,
-                   (Ptr{Void}, Ptr{Void}, Ptr{TimeSpec}),
+                   (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{TimeSpec}),
                    cond.handle, mutex.handle, Ref(abstime))
     status == 0 && return true
     status == Libc.ETIMEDOUT && return false

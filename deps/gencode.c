@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
   DEF_CONST(MAP_PRIVATE, "   = Cint(%d)");
   DEF_CONST(MAP_ANONYMOUS, " = Cint(%d)"); /* FIXME: non-POSIX? */
   DEF_CONST(MAP_FIXED, "     = Cint(%d)");
-  fprintf(output, "const MAP_FAILED    = Ptr{Void}(%ld)\n", (long)MAP_FAILED);
+  fprintf(output, "const MAP_FAILED    = Ptr{Cvoid}(%ld)\n", (long)MAP_FAILED);
   DEF_CONST(MS_ASYNC, "      = Cint(%d)");
   DEF_CONST(MS_SYNC, "       = Cint(%d)");
   DEF_CONST(MS_INVALIDATE, " = Cint(%d)");
@@ -334,7 +334,7 @@ int main(int argc, char* argv[])
 
   fprintf(output, "\n# Definitions for POSIX semaphores:\n");
   DEF_SIZEOF_TYPE("sem_t", sem_t);
-  fprintf(output, "const SEM_FAILED    = Ptr{Void}(%ld)\n", (long)SEM_FAILED);
+  fprintf(output, "const SEM_FAILED    = Ptr{Cvoid}(%ld)\n", (long)SEM_FAILED);
   {
     long val = -1;
 #ifdef _SC_SEM_VALUE_MAX
@@ -420,8 +420,8 @@ int main(int argc, char* argv[])
   DEF_CONST(SA_RESETHAND, " = _typeof_sigaction_flags(0x%08x)");
   DEF_CONST(SA_RESTART, "   = _typeof_sigaction_flags(0x%08x)");
 
-  DEF_CONST_CAST(SIG_DFL, " = Ptr{Void}(%lu)", unsigned long);
-  DEF_CONST_CAST(SIG_IGN, " = Ptr{Void}(%lu)", unsigned long);
+  DEF_CONST_CAST(SIG_DFL, " = Ptr{Cvoid}(%lu)", unsigned long);
+  DEF_CONST_CAST(SIG_IGN, " = Ptr{Cvoid}(%lu)", unsigned long);
 
   fprintf(output, "\n# Definitions for `siginfo_t`:\n");
   {

@@ -134,7 +134,7 @@ end
 function _check_wrapped_array_arguments(mem::M, ::Type{T},
                                         offset::Integer) where {M,T}
     offset ≥ 0 || throw_argument_error("offset must be nonnegative")
-    isbits(T) || throw_argument_error("illegal element type ($T)")
+    isbitstype(T) || throw_argument_error("illegal element type ($T)")
     ptr, len = get_memory_parameters(mem)
     align = Base.datatype_alignment(T)
     addr = ptr + offset
@@ -157,11 +157,10 @@ end
 
 # FIXME: extend Base.view?
 
-Base.length(obj::WrappedArray) = length(obj.arr)
-
-Base.sizeof(obj::WrappedArray) = sizeof(obj.arr)
-
-Base.size(obj::WrappedArray) = size(obj.arr)
+for f in (:length, :sizeof, :size, :eachindex, :strides,
+          :elsize, :eltype, :ndims)
+    @eval Base.$f(obj::WrappedArray) = Base.$f(obj.arr)
+end
 
 Base.size(obj::WrappedArray, d::Number) = size(obj.arr, d)
 
@@ -174,18 +173,19 @@ Base.setindex!(obj::WrappedArray, value, i) = setindex!(obj.arr, value, i)
 Base.setindex!(obj::WrappedArray, value, i, inds...) =
     setindex!(obj.arr, value, i, inds...)
 
-Base.eachindex(obj::WrappedArray) = eachindex(obj.arr)
-
 Base.IndexStyle(::Type{<:WrappedArray}) = Base.IndexLinear()
 
 Base.stride(obj::WrappedArray, d::Integer) = stride(obj.arr, d)
 
-Base.strides(obj::WrappedArray) = strides(obj.arr)
-
 Base.copy(obj::WrappedArray) = copy(obj.arr)
 
-Base.copy!(dest::WrappedArray, src::AbstractArray) =
-    (copy!(dest.arr, src); dest)
+@static if isdefined(Base, :copyto!)
+    import Base: copyto!
+else
+    import Compat: copyto!
+end
+copyto!(dest::WrappedArray, src::AbstractArray) =
+    (copyto!(dest.arr, src); dest)
 
 Base.reinterpret(::Type{T}, obj::WrappedArray) where {T} =
     reinterpret(T, obj.arr)
@@ -202,9 +202,18 @@ unsafe_convert(::Type{Ptr{S}}, obj::WrappedArray{T}) where {S,T} =
     unsafe_convert(Ptr{S}, obj.arr)
 
 # Make a wrapped array iterable:
-Base.start(iter::WrappedArray) = start(iter.arr)
-Base.next(iter::WrappedArray, state) = next(iter.arr, state)
-Base.done(iter::WrappedArray, state) = done(iter.arr, state)
+@static if isdefined(Base, :iterate) # VERSION ≥ v"0.7-alpha"
+    Base.iterate(iter::WrappedArray) = iterate(iter.arr)
+    Base.iterate(iter::WrappedArray, state) = iterate(iter.arr, state)
+    Base.IteratorSize(iter::WrappedArray) = Base.IteratorSize(iter.arr)
+    Base.IteratorEltype(iter::WrappedArray) = Base.IteratorEltype(iter.arr)
+else
+    Base.start(iter::WrappedArray) = start(iter.arr)
+    Base.next(iter::WrappedArray, state) = next(iter.arr, state)
+    Base.done(iter::WrappedArray, state) = done(iter.arr, state)
+    Base.iteratorsize(iter::WrappedArray) = Base.iteratorsize(iter.arr)
+    Base.iteratoreltype(iter::WrappedArray) = Base.iteratoreltype(iter.arr)
+end
 
 #------------------------------------------------------------------------------
 # WRAPPED ARRAYS WITH HEADER
@@ -228,8 +237,8 @@ const _WA_TYPES = (( 1, Int8,       "signed 8-bit integer"),
                    ( 8, UInt64,     "unsigned 64-bit integer"),
                    ( 9, Float32,    "32-bit floating-point"),
                    (10, Float64,    "64-bit floating-point"),
-                   (11, Complex64,  "64-bit complex"),
-                   (12, Complex128, "128-bit complex"))
+                   (11, ComplexF32,  "64-bit complex"),
+                   (12, ComplexF64, "128-bit complex"))
 
 const _WA_ETYPES = DataType[T for (i, T, str) in _WA_TYPES]
 const _WA_DESCRS = String[str for (i, T, str) in _WA_TYPES]

@@ -73,7 +73,7 @@ See also: [`IPC.TimeVal`](@ref), [`nanosleep`](@ref), [`clock_gettime`](@ref).
 function gettimeofday()
     tv = Ref(TimeVal(0, 0))
     # `gettimeofday` should not fail in this case
-    ccall(:gettimeofday, Cint, (Ptr{TimeVal}, Ptr{Void}), tv, C_NULL)
+    ccall(:gettimeofday, Cint, (Ptr{TimeVal}, Ptr{Cvoid}), tv, C_NULL)
     return tv[]
 end
 
@@ -271,7 +271,7 @@ roundup(a::Int, b::Int) =
 
 """
 ```julia
-get_memory_parameters(mem) -> ptr::Ptr{Void}, siz::Int
+get_memory_parameters(mem) -> ptr::Ptr{Cvoid}, siz::Int
 ```
 
 yields the address and number of bytes of memory backed by `mem`.
@@ -280,7 +280,7 @@ The returned values arec checked for correctness.
 See also: [`pointer`](@ref), [`sizeof`](@ref).
 
 """
-function get_memory_parameters(mem)::Tuple{Ptr{Void},Int}
+function get_memory_parameters(mem)::Tuple{Ptr{Cvoid},Int}
     siz = sizeof(mem)
     isa(siz, Integer) ||
         throw_argument_error("illegal type for `sizeof(mem) -> $(typeof(siz))`")
@@ -289,22 +289,53 @@ function get_memory_parameters(mem)::Tuple{Ptr{Void},Int}
     ptr = pointer(mem)
     isa(ptr, Ptr) ||
         throw_argument_error("illegal type for `pointer(mem) -> $(typeof(ptr))`")
-    return (convert(Ptr{Void}, ptr), convert(Int, siz))
+    return (convert(Ptr{Cvoid}, ptr), convert(Int, siz))
 end
 
-@inline _peek(ptr::Ptr{T}) where {T} =
-    unsafe_load(ptr)
-@inline _peek(::Type{T}, ptr::Ptr) where {T} =
-    _peek(convert(Ptr{T}, ptr))
-@inline _peek(::Type{T}, ptr::Ptr, off::Integer) where {T} =
-    _peek(T, ptr + off)
+"""
+```julia
+_peek(T, buf, off) -> val
+```
 
-@inline _poke!(ptr::Ptr{T}, val) where {T} =
-    unsafe_store!(ptr, val)
+yields the value of type `T` stored at offset `off` (in bytes) in buffer
+`buf` provided as a vector of bytes (`Uint8`).
+
+```julia
+_peek(T, ptr) -> val
+```
+
+yields the value of type `T` stored at address given by pointer `ptr`.
+
+Also see: [`unsafe_load`](@ref), [`_poke!`](@ref).
+
+"""
+@inline _peek(::Type{T}, ptr::Ptr) where {T} =
+    unsafe_load(convert(Ptr{T}, ptr))
+@inline _peek(::Type{T}, buf::DenseVector{UInt8}, off::Integer) where {T} =
+    _peek(T, pointer(buf) + off)
+
+"""
+```julia
+_poke!(T, buf, off, val)
+```
+
+stores the value `val`, converted to type `T`, at offset `off` (in bytes) in
+buffer `buf` provided as a vector of bytes (`Uint8`).
+
+```julia
+_poke!(T, ptr, val)
+```
+
+stores the value `val`, converted to type `T`, at address given by pointer
+`ptr`.
+
+Also see: [`unsafe_store!`](@ref), [`_peek`](@ref).
+
+"""
 @inline _poke!(::Type{T}, ptr::Ptr, val) where {T} =
-    _poke!(convert(Ptr{T}, ptr), val)
-@inline _poke!(::Type{T}, ptr::Ptr, off::Integer, val) where {T} =
-    _poke!(T, ptr + off, val)
+    unsafe_store!(convert(Ptr{T}, ptr), val)
+@inline _poke!(::Type{T}, buf::DenseVector{UInt8}, off::Integer, val) where {T} =
+    _poke!(T, pointer(buf) + off, val)
 
 #------------------------------------------------------------------------------
 # DYNAMIC MEMORY OBJECTS
@@ -319,7 +350,7 @@ end
 
 Base.sizeof(obj::DynamicMemory) = obj.len
 Base.pointer(obj::DynamicMemory) = obj.ptr
-Base.convert(::Type{Ptr{Void}}, obj::DynamicMemory) = obj.ptr
+Base.convert(::Type{Ptr{Cvoid}}, obj::DynamicMemory) = obj.ptr
 Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
     convert(Ptr{T}, obj.ptr)
 Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =

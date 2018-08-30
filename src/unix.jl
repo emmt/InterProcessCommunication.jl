@@ -60,9 +60,9 @@ geteuid() = ccall(:geteuid, UserId, ())
 @doc @doc(UserId) geteuid
 
 
-Base.show(io::IO, id::ProcessId) = print(io, "IPC.ProcessId(", dec(id.value), ")")
+Base.show(io::IO, id::ProcessId) = print(io, "IPC.ProcessId(", id.value, ")")
 
-Base.show(io::IO, id::UserId) = print(io, "IPC.UserId(", dec(id.value), ")")
+Base.show(io::IO, id::UserId) = print(io, "IPC.UserId(", id.value, ")")
 
 Base.show(io::IO, ::MIME"text/plain", arg::Union{ProcessId,UserId}) =
     show(io, arg)
@@ -99,11 +99,11 @@ _umask(mask::Integer) =
     ccall(:umask, _typeof_mode_t, (_typeof_mode_t,), mask)
 
 _read(fd::Integer, buf::Union{DenseArray,Ptr}, cnt::Integer) =
-    ccall(:read, _typeof_ssize_t, (Cint, Ptr{Void}, _typeof_size_t),
+    ccall(:read, _typeof_ssize_t, (Cint, Ptr{Cvoid}, _typeof_size_t),
           fd, buf, cnt)
 
 _write(fd::Integer, buf::Union{DenseArray,Ptr}, cnt::Integer) =
-    ccall(:write, _typeof_ssize_t, (Cint, Ptr{Void}, _typeof_size_t),
+    ccall(:write, _typeof_ssize_t, (Cint, Ptr{Cvoid}, _typeof_size_t),
           fd, buf, cnt)
 
 _lseek(fd::Integer, off::Integer, whence::Integer) =
@@ -133,18 +133,18 @@ _fchmod(fd::Integer, mode::Integer) =
 
 _mmap(addr::Ptr, len::Integer, prot::Integer, flags::Integer, fd::Integer,
       off::Integer) =
-          ccall(:mmap, Ptr{Void},
-                (Ptr{Void}, _typeof_size_t, Cint, Cint, Cint, _typeof_off_t),
+          ccall(:mmap, Ptr{Cvoid},
+                (Ptr{Cvoid}, _typeof_size_t, Cint, Cint, Cint, _typeof_off_t),
                 addr, len, prot, flags, fd, off)
 
 _mprotect(addr::Ptr, len::Integer, prot::Integer) =
-    ccall(:mprotect, Cint, (Ptr{Void}, _typeof_size_t, Cint), addr, len, prot)
+    ccall(:mprotect, Cint, (Ptr{Cvoid}, _typeof_size_t, Cint), addr, len, prot)
 
 _msync(addr::Ptr, len::Integer, flags::Integer) =
-    ccall(:msync, Cint, (Ptr{Void}, _typeof_size_t, Cint), addr, len, flags)
+    ccall(:msync, Cint, (Ptr{Cvoid}, _typeof_size_t, Cint), addr, len, flags)
 
 _munmap(addr::Ptr, len::Integer) =
-    ccall(:munmap, Cint, (Ptr{Void}, _typeof_size_t), addr, len)
+    ccall(:munmap, Cint, (Ptr{Cvoid}, _typeof_size_t), addr, len)
 
 _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
     ccall(:shm_open, Cint, (Cstring, Cint, _typeof_mode_t), path, flags, mode)
@@ -153,36 +153,36 @@ _shm_unlink(path::AbstractString) =
     ccall(:shm_unlink, Cint, (Cstring,), path)
 
 _sem_open(path::AbstractString, flags::Integer, mode::Integer, value::Unsigned) =
-    ccall(:sem_open, Ptr{Void}, (Cstring, Cint, _typeof_mode_t, Cuint),
+    ccall(:sem_open, Ptr{Cvoid}, (Cstring, Cint, _typeof_mode_t, Cuint),
           path, flags, mode, value)
 
-_sem_close(sem::Ptr{Void}) =
-    ccall(:sem_close, Cint, (Ptr{Void},), sem)
+_sem_close(sem::Ptr{Cvoid}) =
+    ccall(:sem_close, Cint, (Ptr{Cvoid},), sem)
 
 _sem_unlink(path::AbstractString) =
     ccall(:sem_unlink, Cint, (Cstring,), path)
 
-_sem_getvalue(sem::Ptr{Void}, val::Union{Ref{Cint},Ptr{Cint}}) =
-    ccall(:sem_getvalue, Cint, (Ptr{Void}, Ptr{Cint}), sem, val)
+_sem_getvalue(sem::Ptr{Cvoid}, val::Union{Ref{Cint},Ptr{Cint}}) =
+    ccall(:sem_getvalue, Cint, (Ptr{Cvoid}, Ptr{Cint}), sem, val)
 
-_sem_post(sem::Ptr{Void}) =
-    ccall(:sem_post, Cint, (Ptr{Void},), sem)
+_sem_post(sem::Ptr{Cvoid}) =
+    ccall(:sem_post, Cint, (Ptr{Cvoid},), sem)
 
-_sem_wait(sem::Ptr{Void}) =
-    ccall(:sem_wait, Cint, (Ptr{Void},), sem)
+_sem_wait(sem::Ptr{Cvoid}) =
+    ccall(:sem_wait, Cint, (Ptr{Cvoid},), sem)
 
-_sem_trywait(sem::Ptr{Void}) =
-    ccall(:sem_trywait, Cint, (Ptr{Void},), sem)
+_sem_trywait(sem::Ptr{Cvoid}) =
+    ccall(:sem_trywait, Cint, (Ptr{Cvoid},), sem)
 
-_sem_timedwait(sem::Ptr{Void}, timeout::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
-    ccall(:sem_timedwait, Cint, (Ptr{Void}, Ptr{TimeSpec}), sem, timeout)
+_sem_timedwait(sem::Ptr{Cvoid}, timeout::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
+    ccall(:sem_timedwait, Cint, (Ptr{Cvoid}, Ptr{TimeSpec}), sem, timeout)
 
-_sem_init(sem::Ptr{Void}, shared::Bool, value::Unsigned) =
-    ccall(:sem_init, Cint, (Ptr{Void}, Cint, Cuint),
+_sem_init(sem::Ptr{Cvoid}, shared::Bool, value::Unsigned) =
+    ccall(:sem_init, Cint, (Ptr{Cvoid}, Cint, Cuint),
           sem, shared, value)
 
-_sem_destroy(sem::Ptr{Void}) =
-    ccall(:sem_destroy, Cint, (Ptr{Void},), sem)
+_sem_destroy(sem::Ptr{Cvoid}) =
+    ccall(:sem_destroy, Cint, (Ptr{Cvoid},), sem)
 
 #------------------------------------------------------------------------------
 # FILE DESCRIPTOR
@@ -193,9 +193,7 @@ function Base.open(::Type{FileDescriptor}, path::AbstractString,
                    flags::Integer, mode::Integer=DEFAULT_MODE)
     fd = _open(path, flags, mode)
     systemerror("open", fd < 0)
-    obj = FileDescriptor(fd)
-    finalizer(obj, _close)
-    return obj
+    return finalizer(_close, FileDescriptor(fd))
 end
 
 function Base.open(::Type{FileDescriptor}, path::AbstractString,

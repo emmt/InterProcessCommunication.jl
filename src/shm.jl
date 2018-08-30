@@ -83,7 +83,7 @@ function SharedMemory(key::Key, len::Integer;
 
     # Attach shared memory segment to process address space.
     ptr = _shmat(id, C_NULL, 0)
-    if ptr == Ptr{Void}(-1)
+    if ptr == Ptr{Cvoid}(-1)
         errno = Libc.errno()
         _shmctl(id, IPC_RMID, C_NULL)
         throw_system_error("shmget", errno)
@@ -225,12 +225,12 @@ Base.pointer(obj::SharedMemory) = obj.ptr
 #     Base.string(obj::T)
 
 Base.show(io::IO, obj::SharedMemory{String}) =
-    print(io, "SharedMemory(\"", obj.id, "\"; len=", dec(obj.len),
-          ", ptr=Ptr{Void}(0x", hex(convert(Int, obj.ptr)),"))")
+    print(io, "SharedMemory(\"", obj.id, "\"; len=", obj.len,
+          ", ptr=Ptr{Cvoid}(0x", hex(convert(Int, obj.ptr)),"))")
 
 Base.show(io::IO, obj::SharedMemory{ShmId}) =
     print(io, "SharedMemory(", obj.id, "; len=", obj.len,
-          ", ptr=Ptr{Void}(0x", hex(convert(Int, obj.ptr)),"))")
+          ", ptr=Ptr{Cvoid}(0x", hex(convert(Int, obj.ptr)),"))")
 
 Base.show(io::IO, ::MIME"text/plain", obj::SharedMemory) = show(io, obj)
 
@@ -305,19 +305,20 @@ end
 Base.convert(::Type{Cint}, id::ShmId) = id.value
 Base.convert(::Type{T}, id::ShmId) where {T<:Integer} = convert(T, id.value)
 
-Base.show(io::IO, id::ShmId) = print(io, "ShmId(", dec(id.value), ")")
+Base.show(io::IO, id::ShmId) = print(io, "ShmId(", id.value, ")")
 Base.show(io::IO, ::MIME"text/plain", id::ShmId) = show(io, id)
 
 function Base.sizeof(id::ShmId)
     # Note it is faster to create a Julia array of small size than calling
     # malloc/free or using a tuple unless the number of elements of the tuple
     # is small.
-    buf = Buffer(_sizeof_struct_shmid_ds)
-    ptr = pointer(buf)
-    shmctl(id, IPC_STAT, ptr)
-    return unsafe_load(Ptr{_typeof_shm_segsz}(ptr + _offsetof_shm_segsz))
+    buf = _workspace(_sizeof_struct_shmid_ds)
+    shmctl(id, IPC_STAT, buf)
+    return _peek(_typeof_shm_segsz, buf, _offsetof_shm_segsz)
 end
 
+"`_workspace(size)` yields an array of `size` uninitialized bytes."
+@inline _workspace(size::Integer) = Array{UInt8}(undef, size)
 
 """
 # Get the identifier of an existing System V shared memory segment
@@ -408,12 +409,12 @@ See also: [`shmdt`](@ref), [`shmrm`](@ref).
 function shmat(id::ShmId, readonly::Bool)
     flg = (readonly ? SHM_RDONLY : zero(SHM_RDONLY))
     ptr = _shmat(id.value, C_NULL, flg)
-    systemerror("shmat", ptr == Ptr{Void}(-1))
+    systemerror("shmat", ptr == Ptr{Cvoid}(-1))
     return ptr
 end
 
-_shmat(id::Integer, ptr::Ptr{Void}, flg::Integer) =
-    ccall(:shmat, Ptr{Void}, (Cint, Ptr{Void}, Cint), id, ptr, flg)
+_shmat(id::Integer, ptr::Ptr{Cvoid}, flg::Integer) =
+    ccall(:shmat, Ptr{Cvoid}, (Cint, Ptr{Cvoid}, Cint), id, ptr, flg)
 
 
 """
@@ -427,10 +428,10 @@ Argument `ptr` is the pointer returned by a previous `shmat()` call.
 See also: [`shmdt`](@ref), [`shmget`](@ref).
 
 """
-shmdt(ptr::Ptr{Void}) = systemerror("shmdt", _shmdt(ptr) != SUCCESS)
+shmdt(ptr::Ptr{Cvoid}) = systemerror("shmdt", _shmdt(ptr) != SUCCESS)
 
-_shmdt(ptr::Ptr{Void}) =
-    ccall(:shmdt, Cint, (Ptr{Void},), ptr)
+_shmdt(ptr::Ptr{Cvoid}) =
+    ccall(:shmdt, Cint, (Ptr{Cvoid},), ptr)
 
 """
 
@@ -449,7 +450,7 @@ shmctl(id::ShmId, cmd::Integer, buf::Union{DenseVector,Ptr}) =
     systemerror("shmctl", _shmctl(id.value, cmd, buf) == -1)
 
 _shmctl(id::Integer, cmd::Integer, buf::Union{DenseVector,Ptr}) =
-    ccall(:shmctl, Cint, (Cint, Cint, Ptr{Void}), id, cmd, buf)
+    ccall(:shmctl, Cint, (Cint, Cint, Ptr{Cvoid}), id, cmd, buf)
 
 _shmrm(id::Integer) = _shmctl(id, IPC_RMID, C_NULL)
 
@@ -471,13 +472,12 @@ segment is returned.
 """
 function shmcfg(id::ShmId, perms::_typeof_shm_perm_mode)
     mask = convert(_typeof_shm_perm_mode, MASKMODE)
-    buf = Buffer(_sizeof_struct_shmid_ds)
+    buf = _workspace(_sizeof_struct_shmid_ds)
     shmctl(id, IPC_STAT, buf)
-    ptr = convert(Ptr{_typeof_shm_perm_mode},
-                  pointer(buf) + _offsetof_shm_perm_mode)
-    mode = unsafe_load(ptr)
+    mode = _peek(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode)
     if (mode & mask) != (perms & mask)
-        unsafe_store!(ptr, (mode & ~mask) | (perms & mask))
+        _poke!(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode,
+               (mode & ~mask) | (perms & mask))
         shmctl(id, IPC_SET, buf)
     end
     return id
@@ -513,22 +513,21 @@ segment.  In all cases, `info` is returned.
 ShmInfo(arg::Union{ShmId,ShmArray,Key}) = shminfo!(arg, ShmInfo())
 
 function shminfo!(id::ShmId, info::ShmInfo)
-    buf = Buffer(_sizeof_struct_shmid_ds)
+    buf = _workspace(_sizeof_struct_shmid_ds)
     shmctl(id, IPC_STAT, buf)
-    ptr = pointer(buf)
-    info.atime  = _peek(_typeof_time_t,        ptr, _offsetof_shm_atime)
-    info.dtime  = _peek(_typeof_time_t,        ptr, _offsetof_shm_dtime)
-    info.ctime  = _peek(_typeof_time_t,        ptr, _offsetof_shm_ctime)
-    info.segsz  = _peek(_typeof_shm_segsz,     ptr, _offsetof_shm_segsz)
+    info.atime  = _peek(_typeof_time_t,        buf, _offsetof_shm_atime)
+    info.dtime  = _peek(_typeof_time_t,        buf, _offsetof_shm_dtime)
+    info.ctime  = _peek(_typeof_time_t,        buf, _offsetof_shm_ctime)
+    info.segsz  = _peek(_typeof_shm_segsz,     buf, _offsetof_shm_segsz)
     info.id     = id.value
-    info.cpid   = _peek(_typeof_pid_t,         ptr, _offsetof_shm_cpid)
-    info.lpid   = _peek(_typeof_pid_t,         ptr, _offsetof_shm_lpid)
-    info.nattch = _peek(_typeof_shmatt_t,      ptr, _offsetof_shm_nattch)
-    info.mode   = _peek(_typeof_shm_perm_mode, ptr, _offsetof_shm_perm_mode)
-    info.uid    = _peek(_typeof_uid_t,         ptr, _offsetof_shm_perm_uid)
-    info.gid    = _peek(_typeof_gid_t,         ptr, _offsetof_shm_perm_gid)
-    info.cuid   = _peek(_typeof_uid_t,         ptr, _offsetof_shm_perm_cuid)
-    info.cgid   = _peek(_typeof_gid_t,         ptr, _offsetof_shm_perm_cgid)
+    info.cpid   = _peek(_typeof_pid_t,         buf, _offsetof_shm_cpid)
+    info.lpid   = _peek(_typeof_pid_t,         buf, _offsetof_shm_lpid)
+    info.nattch = _peek(_typeof_shmatt_t,      buf, _offsetof_shm_nattch)
+    info.mode   = _peek(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode)
+    info.uid    = _peek(_typeof_uid_t,         buf, _offsetof_shm_perm_uid)
+    info.gid    = _peek(_typeof_gid_t,         buf, _offsetof_shm_perm_gid)
+    info.cuid   = _peek(_typeof_uid_t,         buf, _offsetof_shm_perm_cuid)
+    info.cgid   = _peek(_typeof_gid_t,         buf, _offsetof_shm_perm_cgid)
     return info
 end
 

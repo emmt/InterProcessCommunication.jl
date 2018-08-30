@@ -42,7 +42,7 @@ end
 # Counterpart of C `struct sigaction` structure.  Must be mutable to avoid
 # wrapping it in a Ref when passed by address.
 mutable struct SigAction
-    handler::Ptr{Void}
+    handler::Ptr{Cvoid}
     mask::SigSet
     flags::_typeof_sigaction_flags
 end
@@ -54,7 +54,7 @@ mutable struct SigInfo
     bits::_typeof_siginfo
     function SigInfo()
         obj = new()
-        ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+        ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
               pointer_from_objref(obj), 0, sizeof(obj))
         return obj
     end
@@ -69,8 +69,6 @@ struct ShmId
     value::Cint
     ShmId(value::Integer) = new(value)
 end
-
-const Buffer = Vector{UInt8}
 
 mutable struct ShmInfo
     atime::UInt64 # last attach time
@@ -110,30 +108,26 @@ end
 abstract type MemoryBlock end
 
 mutable struct DynamicMemory <: MemoryBlock
-    ptr::Ptr{Void}
+    ptr::Ptr{Cvoid}
     len::Int
     function DynamicMemory(len::Integer)
         @assert len ≥ 1
         ptr = Libc.malloc(len)
         ptr != C_NULL || throw(OutOfMemoryError())
-        obj = new(ptr, len)
-        finalizer(obj, _destroy)
-        return obj
+        return finalizer(_destroy, new(ptr, len))
     end
 end
 
 mutable struct SharedMemory{T<:Union{String,ShmId}} <: MemoryBlock
-    ptr::Ptr{Void} # mapped address of shared memory segment
-    len::Int       # size of shared memory segment (in bytes)
-    volatile::Bool # true if shared memory is volatile (only for the creator)
-    id::T          # identifier of shared memory segment
-    function SharedMemory{T}(ptr::Ptr{Void},
+    ptr::Ptr{Cvoid} # mapped address of shared memory segment
+    len::Int        # size of shared memory segment (in bytes)
+    volatile::Bool  # true if shared memory is volatile (only for the creator)
+    id::T           # identifier of shared memory segment
+    function SharedMemory{T}(ptr::Ptr{Cvoid},
                              len::Integer,
                              volatile::Bool,
                              id::T) where {T<:Union{String,ShmId}}
-        obj = new(ptr, len, volatile, id)
-        finalizer(obj, _destroy)
-        return obj
+        return finalizer(_destroy, new(ptr, len, volatile, id))
     end
 end
 
@@ -144,7 +138,7 @@ struct WrappedArray{T,N,M} <: DenseArray{T,N}
     function WrappedArray{T,N,M}(ptr::Ptr{T},
                                  dims::NTuple{N,<:Integer},
                                  mem::M) where {T,N,M}
-        arr = unsafe_wrap(Array, ptr, dims, false)
+        arr = unsafe_wrap(Array, ptr, dims)
         return new{T,N,M}(arr, mem)
     end
 end
@@ -181,7 +175,7 @@ end
 # const Dimensions{N} = Union{Vararg{<:Integer,N},Tuple{Vararg{<:Integer,N}}}
 
 mutable struct Semaphore{T}
-    ptr::Ptr{Void}
+    ptr::Ptr{Cvoid}
     lnk::T
     # Provide inner constructor to force fully qualified calls.
     Semaphore{T}(ptr::Ptr, lnk) where {T} = new{T}(ptr, lnk)

@@ -1,12 +1,9 @@
 module IPCTests
 
-using IPC
+using Compat
+using Compat.Test
 
-@static if VERSION < v"0.7.0-DEV.2005"
-    using Base.Test
-else
-    using Test
-end
+using IPC
 
 @testset "Basic Functions       " begin
     pid = IPC.getpid()
@@ -60,9 +57,9 @@ end
 
 @testset "Signals               " begin
     # Sanity check:
-    @test isbits(IPC._typeof_sigset)
+    @test isbitstype(IPC._typeof_sigset)
     @test sizeof(IPC._typeof_sigset) == IPC._sizeof_sigset
-    @test isbits(IPC._typeof_siginfo)
+    @test isbitstype(IPC._typeof_siginfo)
     @test sizeof(IPC._typeof_siginfo) == IPC._sizeof_siginfo
 
     # SigSet:
@@ -101,7 +98,7 @@ end
         @test_throws SystemError Semaphore(name)
         sem1 = Semaphore(name, 0)
         sem2 = Semaphore(name)
-        @test sem1[] == Int(sem1)
+        @test sem1[] == 0
         @test sem2[] == 0
         post(sem1)
         @test sem2[] == 1
@@ -113,7 +110,7 @@ end
         @test trywait(sem2) == false
         @test_throws TimeoutError timedwait(sem2, 0.1)
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
 
 @testset "Anonymous Semaphores  " begin
@@ -121,7 +118,7 @@ end
         buf = DynamicMemory(sizeof(Semaphore))
         sem1 = Semaphore(buf, 0)
         sem2 = Semaphore(buf)
-        @test sem1[] == Int(sem1)
+        @test sem1[] == 0
         @test sem2[] == 0
         post(sem1)
         @test sem2[] == 1
@@ -133,7 +130,7 @@ end
         @test trywait(sem2) == false
         @test_throws TimeoutError timedwait(sem2, 0.1)
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
 
 @testset "Wrapped Arrays        " begin
@@ -162,7 +159,7 @@ end
         @test all(C[i] == i for i in 1:n)
         @test all(D[i] == i for i in 1:n)
         @test all(E[i] == i for i in 1:n)
-        B[:] = 0
+        B[:] .= 0
         @test all(A[i] == 0 for i in 1:n)
         C[:] = randn(T, n)
         flag = true
@@ -172,15 +169,15 @@ end
             end
         end
         @test flag
-        B[:] = 0
+        B[:] .= 0
         A[2,3] = 23
         A[3,2] = 32
         @test D[2,3] == 23 && D[3,2] == 32
         # Test copy back.
-        copy!(A, E)
+        copyto!(A, E)
         @test all(A[i] == E[i] for i in 1:n)
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
 
 @testset "Shared Memory (BSD)   " begin
@@ -192,7 +189,7 @@ end
         id = shmid(A)
         @test isa(id, ShmId)
         @test id == ShmId(A)
-        @test "$id" == "ShmId($(dec(id.value)))"
+        @test "$id" == "ShmId($(id.value))"
         @test id.value == convert(Int64, id)
         @test id.value == convert(Int32, id)
         B = SharedMemory(id; readonly=false)
@@ -213,11 +210,11 @@ end
         @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
         @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
         @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
-        @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+        @test ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
                     Aptr, 0, len) == Aptr
         @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
 
 @testset "Shared Memory (POSIX) " begin
@@ -250,11 +247,11 @@ end
         @test all(unsafe_load(Aptr, i) == -i for i in 1:n)
         @test all(unsafe_load(Cptr, i) == -i for i in 1:n)
         @test_throws ReadOnlyMemoryError unsafe_store!(Cptr,42)
-        @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+        @test ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
                     Aptr, 0, len) == Aptr
         @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
 
 @testset "Wrapped Shared Arrays " begin
@@ -263,7 +260,7 @@ end
         dims = (3,4,5)
         for key in (IPC.PRIVATE, "/wrsharr-$(getpid())")
             if isa(key, String)
-                try; shmrm(key); end
+                try; shmrm(key); catch err; end
             end
             A = WrappedArray(key, T, dims)
             id = shmid(A)
@@ -290,11 +287,12 @@ end
             @test extrema(A[:] + (1:n)) == (0, 0)
             @test all(C[i] == -i for i in 1:n)
             @test_throws ReadOnlyMemoryError C[end] = 42
-            @test ccall(:memset, Ptr{Void}, (Ptr{Void}, Cint, Csize_t),
+            @test ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
                         A, 0, sizeof(A)) == pointer(A)
             @test extrema(C) == (0, 0)
         end
     end
-    gc() # call garbage collector to exercise the finalizers
+    GC.gc() # call garbage collector to exercise the finalizers
 end
+
 end # module
