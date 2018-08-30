@@ -14,9 +14,10 @@ notifications:
 # uncomment the following lines to override the default test script
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.build("IPC"); Pkg.test("IPC"; coverage=true)'
+  - echo "********** $pkgname *********"
+  - julia --check-bounds=yes -e 'if VERSION >= v"0.7.0-DEV.5183"; using Pkg; end; Pkg.clone(pwd()); Pkg.build("IPC"); Pkg.test("IPC"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("IPC")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'if VERSION >= v"0.7.0-DEV.5183"; using Pkg; end; cd(Pkg.dir("IPC")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("IPC")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'if VERSION >= v"0.7.0-DEV.5183"; using Pkg; end; cd(Pkg.dir("IPC")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
