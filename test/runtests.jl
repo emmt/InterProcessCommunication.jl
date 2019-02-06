@@ -2,6 +2,7 @@ module IPCTests
 
 using Compat
 using Compat.Test
+using Compat.Sys: isapple, isbsd, islinux, isunix, iswindows
 
 using IPC
 
@@ -42,17 +43,17 @@ end
     float(clock_getres(CLOCK_REALTIME))
 
     # compare times
-    tol = 0.001
-    @test abs(time() - float(gettimeofday())) ≤ tol
-    @test abs(time() - float(clock_gettime(CLOCK_REALTIME))) ≤ tol
-    @test float(clock_getres(CLOCK_MONOTONIC)) ≤ tol
-    @test float(clock_getres(CLOCK_REALTIME)) ≤ tol
+    ms = 0.001
+    @test abs(time() - float(gettimeofday())) ≤ 1ms
+    @test abs(time() - float(clock_gettime(CLOCK_REALTIME))) ≤ 1ms
+    @test float(clock_getres(CLOCK_MONOTONIC)) ≤ 1ms
+    @test float(clock_getres(CLOCK_REALTIME)) ≤ 1ms
     @test float(nanosleep(0.01)) == 0
-    s = 1e-2
+    s = 10ms
     t0 = float(clock_gettime(CLOCK_MONOTONIC))
     nanosleep(s)
     t1 = float(clock_gettime(CLOCK_MONOTONIC))
-    @test abs(t1 - (t0 + s)) ≤ tol
+    @test abs(t1 - (t0 + s)) ≤ 4ms
 end
 
 @testset "Signals               " begin
@@ -64,16 +65,18 @@ end
 
     # SigSet:
     set = SigSet()
-    @test all(set[i] == false for i in IPC.SIGRTMIN:IPC.SIGRTMAX)
+    sigrtmin = (isdefined(IPC, :SIGRTMIN) ? IPC.SIGRTMIN : 1)
+    sigrtmax = (isdefined(IPC, :SIGRTMAX) ? IPC.SIGRTMAX : 8*sizeof(set))
+    @test all(set[i] == false for i in sigrtmin:sigrtmax)
     fill!(set, true)
-    @test all(set[i] for i in IPC.SIGRTMIN:IPC.SIGRTMAX)
-    i = rand(IPC.SIGRTMIN:IPC.SIGRTMAX)
+    @test all(set[i] for i in sigrtmin:sigrtmax)
+    i = rand(sigrtmin:sigrtmax)
     set[i] = false
     @test !set[i]
     set[i] = true
     @test set[i]
     set = sigpending()
-    @test all(set[i] == false for i in 1:IPC.SIGRTMAX)
+    @test all(set[i] == false for i in 1:sigrtmax)
 
     # SigInfo:
     si = SigInfo()
@@ -91,46 +94,51 @@ end
     semds = IPC.SemInfo()
 end
 
-@testset "Named Semaphores      " begin
-    begin
-        name = "/sem-$(getpid())"
-        rm(Semaphore, name)
-        @test_throws SystemError Semaphore(name)
-        sem1 = Semaphore(name, 0)
-        sem2 = Semaphore(name)
-        @test sem1[] == 0
-        @test sem2[] == 0
-        post(sem1)
-        @test sem2[] == 1
-        post(sem1)
-        @test sem2[] == 2
-        wait(sem2)
-        @test sem2[] == 1
-        @test trywait(sem2) == true
-        @test trywait(sem2) == false
-        @test_throws TimeoutError timedwait(sem2, 0.1)
-    end
-    GC.gc() # call garbage collector to exercise the finalizers
-end
+# Skip semaphore tests for Apple.
+@static if !isapple()
 
-@testset "Anonymous Semaphores  " begin
-    begin
-        buf = DynamicMemory(sizeof(Semaphore))
-        sem1 = Semaphore(buf, 0)
-        sem2 = Semaphore(buf)
-        @test sem1[] == 0
-        @test sem2[] == 0
-        post(sem1)
-        @test sem2[] == 1
-        post(sem1)
-        @test sem2[] == 2
-        wait(sem2)
-        @test sem2[] == 1
-        @test trywait(sem2) == true
-        @test trywait(sem2) == false
-        @test_throws TimeoutError timedwait(sem2, 0.1)
+    @testset "Named Semaphores      " begin
+        begin
+            name = "/sem-$(getpid())"
+            rm(Semaphore, name)
+            @test_throws SystemError Semaphore(name)
+            sem1 = Semaphore(name, 0)
+            sem2 = Semaphore(name)
+            @test sem1[] == 0
+            @test sem2[] == 0
+            post(sem1)
+            @test sem2[] == 1
+            post(sem1)
+            @test sem2[] == 2
+            wait(sem2)
+            @test sem2[] == 1
+            @test trywait(sem2) == true
+            @test trywait(sem2) == false
+            @test_throws TimeoutError timedwait(sem2, 0.1)
+        end
+        GC.gc() # call garbage collector to exercise the finalizers
     end
-    GC.gc() # call garbage collector to exercise the finalizers
+
+    @testset "Anonymous Semaphores  " begin
+        begin
+            buf = DynamicMemory(sizeof(Semaphore))
+            sem1 = Semaphore(buf, 0)
+            sem2 = Semaphore(buf)
+            @test sem1[] == 0
+            @test sem2[] == 0
+            post(sem1)
+            @test sem2[] == 1
+            post(sem1)
+            @test sem2[] == 2
+            wait(sem2)
+            @test sem2[] == 1
+            @test trywait(sem2) == true
+            @test trywait(sem2) == false
+            @test_throws TimeoutError timedwait(sem2, 0.1)
+        end
+        GC.gc() # call garbage collector to exercise the finalizers
+    end
+
 end
 
 @testset "Wrapped Arrays        " begin
