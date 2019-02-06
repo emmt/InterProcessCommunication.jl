@@ -140,7 +140,8 @@ end
 function Base.rm(::Type{Semaphore}, name::AbstractString)
     if _sem_unlink(name) != SUCCESS
         errno = Libc.errno()
-        if errno != Libc.ENOENT
+        # On OSX, errno is EINVAL when semaphore does not exists.
+        if errno != (@static isapple() ?  Libc.EINVAL : Libc.ENOENT)
             throw_system_error("sem_unlink", errno)
         end
     end
