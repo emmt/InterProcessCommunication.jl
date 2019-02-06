@@ -5,6 +5,7 @@ deps/*.o
 deps/gencode
 deps/build
 deps/lib
+docs/build/
 *~
 *.jl.cov
 *.jl.mem

@@ -6,10 +6,9 @@ the semaphore value by one with `post(sem)`; and decrement the semaphore value
 by one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
 `wait(sem)` call will block until the value becomes greater than zero.
 
-There are two kinds of semaphores: *named* and *anonymous* semaphores.
-[Named semaphores](#named-semaphores) are identified by their name which is a
-string of the form `"/somename"`.
-[Anonymous semaphores](#anonymous-semaphores) are backed by *memory* objects
+There are two kinds of semaphores: *named* and *anonymous* semaphores.  [Named
+Semaphores](@ref) are identified by their name which is a string of the form
+`"/somename"`.  [Anonymous Semaphores](@ref) are backed by *memory* objects
 (usually shared memory) providing the necessary storage.  In Julia IPC package,
 semaphores are instances of `Semaphore{T}` where `T` is `String` for named
 semaphores and the type of the backing memory object for anonymous semaphores.
