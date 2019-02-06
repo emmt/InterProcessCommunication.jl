@@ -376,8 +376,12 @@ int main(int argc, char* argv[])
 #endif
 
   fprintf(output, "\n# Definitions for real-time signals:\n");
+#ifdef SIGRTMIN
   DEF_CONST(SIGRTMIN, "    = Cint(%d)");
+#endif
+#ifdef SIGRTMAX
   DEF_CONST(SIGRTMAX, "    = Cint(%d)");
+#endif
 #ifdef SIG_BLOCK
   DEF_CONST(SIG_BLOCK, "   = Cint(%d)");
 #endif
