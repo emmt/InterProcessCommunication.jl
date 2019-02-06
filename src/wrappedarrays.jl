@@ -325,7 +325,7 @@ function Base.read(mem, ::Type{WrappedArrayHeader})
         throw_argument_error("insufficient size of memory block for header")
     hdr = unsafe_load(convert(Ptr{WrappedArrayHeader}, ptr))
     hdr.magic == _WA_MAGIC ||
-        error("invalid magic number (0x$(hex(hdr.magic)))")
+        error("invalid magic number (0x$(string(hdr.magic, base=16)))")
     etype = Int(hdr.etype)
     1 ≤ etype ≤ length(_WA_ETYPES) ||
         error("invalid element type identifier ($etype)")

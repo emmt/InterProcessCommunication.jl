@@ -416,7 +416,7 @@ SigAction() = SigAction(C_NULL, SigSet(), 0)
 function Base.show(io::IO, obj::SigAction)
     print(io, "SigAction(handler=Ptr{Cvoid}(")
     @printf(io, "%p", obj.handler)
-    print(io, "), mask=SigSet(....), flags=0x", hex(obj.flags), ")")
+    print(io, "), mask=SigSet(....), flags=0x", string(obj.flags, base=16), ")")
 end
 
 Base.show(io::IO, ::MIME"text/plain", obj::SigAction) = show(io, obj)

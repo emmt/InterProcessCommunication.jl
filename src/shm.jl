@@ -226,11 +226,11 @@ Base.pointer(obj::SharedMemory) = obj.ptr
 
 Base.show(io::IO, obj::SharedMemory{String}) =
     print(io, "SharedMemory(\"", obj.id, "\"; len=", obj.len,
-          ", ptr=Ptr{Cvoid}(0x", hex(convert(Int, obj.ptr)),"))")
+          ", ptr=Ptr{Cvoid}(0x", string(convert(Int, obj.ptr), base=16),"))")
 
 Base.show(io::IO, obj::SharedMemory{ShmId}) =
     print(io, "SharedMemory(", obj.id, "; len=", obj.len,
-          ", ptr=Ptr{Cvoid}(0x", hex(convert(Int, obj.ptr)),"))")
+          ", ptr=Ptr{Cvoid}(0x", string(convert(Int, obj.ptr), base=16),"))")
 
 Base.show(io::IO, ::MIME"text/plain", obj::SharedMemory) = show(io, obj)
 
