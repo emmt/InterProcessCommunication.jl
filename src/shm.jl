@@ -86,7 +86,7 @@ function SharedMemory(key::Key, len::Integer;
     if ptr == Ptr{Cvoid}(-1)
         errno = Libc.errno()
         _shmctl(id, IPC_RMID, C_NULL)
-        throw_system_error("shmget", errno)
+        throw_system_error("shmat", errno)
     end
     if volatile && _shmctl(id, IPC_RMID, C_NULL) == -1
         errno = Libc.errno()
