@@ -114,13 +114,21 @@ See also: [`clock_gettime`](@ref), [`clock_settime`](@ref),
           [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
           [`IPC.TimeVal`](@ref).
 
-"""
-function clock_getres(id::Integer)
-    res = Ref(TimeSpec(0,0))
-    systemerror("clock_getres",
-                ccall(:clock_getres, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
-                      id, res) != SUCCESS)
-    return res[]
+""" clock_getres
+
+@static if Sys.islinux()
+    function clock_getres(id::Integer)
+        res = Ref(TimeSpec(0,0))
+        systemerror("clock_getres",
+                    ccall(:clock_getres, Cint,
+                          (_typeof_clockid_t, Ptr{TimeSpec}),
+                          id, res) != SUCCESS)
+        return res[]
+    end
+else
+    # Assume the same resolution as gettimeofday which is used as a substitute
+    # to clock_gettime.
+    clock_getres(id::Integer) = TimeSpec(0, 1_000)
 end
 
 """
@@ -144,13 +152,20 @@ See also: [`clock_getres`](@ref), [`clock_settime`](@ref),
           [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
           [`IPC.TimeVal`](@ref).
 
-"""
-function clock_gettime(id::Integer)
-    ts = Ref(TimeSpec(0,0))
-    systemerror("clock_gettime",
-                ccall(:clock_gettime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
-                      id, ts) != SUCCESS)
-    return ts[]
+""" clock_gettime
+
+@static if Sys.islinux()
+    function clock_gettime(id::Integer)
+        ts = Ref(TimeSpec(0,0))
+        systemerror("clock_gettime",
+                    ccall(:clock_gettime, Cint,
+                          (_typeof_clockid_t, Ptr{TimeSpec}),
+                          id, ts) != SUCCESS)
+        return ts[]
+    end
+else
+    # Use clock_gettime as a substitute.
+    clock_gettime(id::Integer) = TimeSpec(gettimeofday())
 end
 
 @doc @doc(clock_gettime) CLOCK_REALTIME
@@ -183,8 +198,12 @@ clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
                       id, ts) != SUCCESS)
 
 TimeSpec(sec::Real) = convert(TimeSpec, sec)
+TimeSpec(ts::TimeSpec) = ts
+TimeSpec(tv::TimeVal) = convert(TimeSpec, tv)
 
 TimeVal(sec::Real) = convert(TimeVal, sec)
+TimeVal(tv::TimeVal) = tv
+TimeVal(ts::TimeSpec) = convert(TimeVal, ts)
 
 _time_t(x::Integer) = convert(_typeof_time_t, x)
 _time_t(x::Real) = round(_typeof_time_t, x)

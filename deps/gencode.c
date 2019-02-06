@@ -34,7 +34,16 @@
 # define st_atim st_atimespec
 # define st_mtim st_mtimespec
 # define st_ctim st_ctimespec
+# define sigval_t union sigval
+# define clockid_t uint32_t
 #endif
+#ifndef CLOCK_REALTIME
+# define CLOCK_REALTIME 0
+#endif
+#ifndef CLOCK_MONOTONIC
+# define CLOCK_MONOTONIC 1
+#endif
+
 
 /* Determine the offset of a field in a structure. */
 #define OFFSET_OF(type, field) ((char*)&((type*)0)->field - (char*)0)
@@ -392,7 +401,7 @@ int main(int argc, char* argv[])
   DEF_CONST(SIG_SETMASK, " = Cint(%d)");
 #endif
   fprintf(output, "const _typeof_sigval_t  = Int%d\n",
-          8*(int)sizeof(union sigval));
+          8*(int)sizeof(sigval_t));
 
   setofbits(output, "_typeof_sigset", sizeof(sigset_t), TRUE);
   DEF_SIZEOF_TYPE("sigset   ", sigset_t);
