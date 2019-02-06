@@ -15,6 +15,7 @@ module IPC
 
 using Compat
 using Compat.Printf
+using Compat.Sys: isapple, isbsd, islinux, isunix, iswindows
 
 import Base: convert, unsafe_convert,
     lock, unlock, trylock, timedwait, broadcast
