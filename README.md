@@ -11,23 +11,25 @@ interacts with other processes or threads by means of BSD (System V) IPC or
 POSIX shared memory, semaphores, message queues or mutexes and condition
 variables.  Module `IPC.jl` intends to provide such facilities.
 
+Documentation is here: https://emmt.github.io/IPC.jl/dev/
+
+
 Julia IPC package provides:
 
-* Two kinds of [**shared memory**](doc/sharedmemory.md) objects:
-  [named shared memory](doc/sharedmemory.md#posix-shared-memory) which are
+* Two kinds of [**shared memory**](docs/src/sharedmemory.md) objects:
+  [named shared memory](docs/src/sharedmemory.md#posix-shared-memory) which are
   identified by their name and BSD (System V)
-  [shared memory segment](doc/sharedmemory.md#bsd-shared-memory) which are
+  [shared memory segment](docs/src/sharedmemory.md#bsd-shared-memory) which are
   identified by a key.
 
-* Two kinds of [**semaphores**](doc/semaphores.md):
-  [named semaphores](doc/semaphores.md#named-semaphores) which are identified
-  by their name and
-  [anonymous semaphores](doc/semaphores.md#anonymous-semaphores) which are
-  backed by *memory* objects (usually shared memory) providing the necessary
-  storage.
+* Two kinds of [**semaphores**](docs/src/semaphores.md): [named
+  semaphores](docs/src/semaphores.md#named-semaphores) which are identified by
+  their name and [anonymous
+  semaphores](docs/src/semaphores.md#anonymous-semaphores) which are backed by
+  *memory* objects (usually shared memory) providing the necessary storage.
 
-* Management of [**signals**](doc/signals.md) including so called real-time
-  signals.
+* Management of [**signals**](docs/src/signals.md) including so called
+  real-time signals.
 
 
 ## Installation
