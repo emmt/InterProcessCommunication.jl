@@ -4,7 +4,7 @@ get(ENV, "TRAVIS_JULIA_VERSION", "") == "nightly" || exit()
 
 using Coverage
 
-cd(joinpath(dirname(@__FILE__), "..")) do
+cd(joinpath(@__DIR__, "..")) do
     # push coverage results to Codecov
     Codecov.submit(Codecov.process_folder())
 
