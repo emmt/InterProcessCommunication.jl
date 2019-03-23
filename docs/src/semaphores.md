@@ -28,7 +28,7 @@ which creates a new named semaphore with initial value set to `value` and
 returns an instance of `Semaphore{String}`.  Keyword `perms` can be used to
 specify access permissions (the default value warrants read and write
 permissions for the caller).  Keyword `volatile` specify whether the semaphore
-should be unlinked when the returned object is garbage collected.
+should be unlinked when the returned object is finalized.
 
 Another process (or thread) can open an existing named semaphore by calling:
 
@@ -57,8 +57,8 @@ open(Semaphore, name, flags, mode, value, volatile) -> sem
 where `flags` may have the bits `IPC.O_CREAT` and `IPC.O_EXCL` set, `mode`
 specifies the granted access permissions, `value` is the initial semaphore
 value and `volatile` is a boolean indicating whether the semaphore should be
-unlinked when the returned object `sem` is garbage collected.  The values of
-`mode` and `value` are ignored if an existing named semaphore is open.
+unlinked when the returned object `sem` is finalized.  The values of `mode` and
+`value` are ignored if an existing named semaphore is open.
 
 
 ## Anonymous Semaphores
@@ -77,25 +77,25 @@ initial value set to `value` and returns an instance of
 `Semaphore{typeof(mem)}`.  Keyword `offset` can be used to specify the address
 (in bytes) of the semaphore data relative to `pointer(mem)`.  Keyword
 `volatile` specify whether the semaphore should be destroyed when the returned
-object is garbage collected.
+object is finalized.
 
 The number of bytes needed to store an anonymous semaphore is given by
 `sizeof(Semaphore)` and anonymous semaphore must be aligned in memory at
-multiples of the word size (that is `Sys.WORD_SIZE >> 3` in bytes).  Memory
+multiples of the word size in bytes (that is `Sys.WORD_SIZE >> 3`).  Memory
 objects used to store an anonymous semaphore must implement two methods:
-`pointer(mem)` and `sizeof(mem)` to yield respectively the base address and the
-size (in bytes) of the associated memory.
+`pointer(mem)` and `sizeof(mem)` to yield respectively the base address (as an
+instance of `Ptr`) and the size (in bytes) of the associated memory.
 
 Another process (or thread) can use an existing (initialized) anonymous
-semaphore backed by calling:
+semaphore by calling:
 
 ```julia
 Semaphore(mem; offset=0) -> sem
 ```
 
 where `mem` is the memory object which provides the storage of the semaphore at
-relative position specified by keyword `offset` zero by default).  The returned
-value is an instance of `Semaphore{typeof(mem)}`
+relative position specified by keyword `offset` (zero by default).  The
+returned value is an instance of `Semaphore{typeof(mem)}`
 
 
 ## Operations on Semaphores
@@ -118,7 +118,7 @@ typemax(Semaphore)
 ```
 
 To allocate memory for anonymous semaphores, you need to know the number of
-bytes need to store a semaphore.  This is given by:
+bytes needed to store a semaphore.  This is given by:
 
 ```julia
 sizeof(Semaphore)
@@ -135,7 +135,7 @@ post(sem)
 
 which increments by one the semaphore's value.  If the semaphore's value
 consequently becomes greater than zero, then another process or thread blocked
-in a `wait` call will be woken up and proceed to lock the semaphore.
+in a `wait` call on this semaphore will be woken up.
 
 Locking the semaphore `sem` is done by:
 
@@ -144,7 +144,7 @@ wait(sem)
 ```
 
 which decrements by one the semaphore `sem`.  If the semaphore's value is
-greater than zero, then the decrement proceeds, and the function returns,
+greater than zero, then the decrement proceeds and the function returns
 immediately.  If the semaphore currently has the value zero, then the call
 blocks until either it becomes possible to perform the decrement (i.e., the
 semaphore value rises above zero), or a signal handler interrupts the call (in
@@ -157,11 +157,10 @@ To try locking the semaphore `sem` without blocking, do:
 trywait(sem) -> boolean
 ```
 
-This call attempts to immediately decrement (lock) the semaphore returning
-`true` if successful.  If the decrement cannot be immediately performed, then
-`false` is returned.  If an interruption is received or if an unexpected error
-occurs, an exception is thrown (`InterruptException` or `SystemError`
-repectively).
+which attempts to immediately decrement (lock) the semaphore returning `true`
+if successful.  If the decrement cannot be immediately performed, then `false`
+is returned.  If an interruption is received or if an unexpected error occurs,
+an exception is thrown (`InterruptException` or `SystemError` repectively).
 
 Finally, the call:
 
@@ -170,7 +169,7 @@ timedwait(sem, secs)
 ```
 
 decrements (locks) the semaphore `sem`.  If the semaphore's value is greater
-than zero, then the decrement proceeds, and the function returns, immediately.
+than zero, then the decrement proceeds and the function returns immediately.
 If the semaphore currently has the value zero, then the call blocks until
 either it becomes possible to perform the decrement (i.e., the semaphore value
 rises above zero), or the limit of `secs` seconds expires (in which case an

@@ -20,7 +20,7 @@ creates a new named semaphore identified by the string `name` of the form
 `"/somename"` and initial value set to `value`.  An instance of
 `Semaphore{String}` is returned.  Keyword `perms` can be used to specify access
 permissions.  Keyword `volatile` specify whether the semaphore should be
-unlinked when the returned object is garbage collected.
+unlinked when the returned object is finalized.
 
 ```julia
 Semaphore(name) -> sem
@@ -48,8 +48,8 @@ open(Semaphore, name, flags, mode, value, volatile) -> sem
 where `flags` may have the bits `IPC.O_CREAT` and `IPC.O_EXCL` set, `mode`
 specifies the granted access permissions, `value` is the initial semaphore
 value and `volatile` is a boolean indicating whether the semaphore should be
-unlinked when the returned object `sem` is garbage collected.  The values of
-`mode` and `value` are ignored if an existing named semaphore is open.
+unlinked when the returned object `sem` is finalized.  The values of `mode` and
+`value` are ignored if an existing named semaphore is open.
 
 
 ## Anonymous Semaphores
@@ -65,7 +65,7 @@ initializes an anonymous semaphore backed by memory object `mem` with initial
 value set to `value` and returns an instance of `Semaphore{typeof(mem)}`.
 Keyword `offset` can be used to specify the address (in bytes) of the semaphore
 data relative to `pointer(mem)`.  Keyword `volatile` specify whether the
-semaphore should be destroyed when the returned object is garbage collected.
+semaphore should be destroyed when the returned object is finalized.
 
 ```julia
 Semaphore(mem; offset=0) -> sem
@@ -199,7 +199,7 @@ post(sem)
 
 increments (unlocks) the semaphore `sem`.  If the semaphore's value
 consequently becomes greater than zero, then another process or thread blocked
-in a [`wait`](@ref) call will be woken up and proceed to lock the semaphore.
+in a [`wait`](@ref) call on this semaphore will be woken up.
 
 See also: [`Semaphore`](@ref), [`wait`](@ref), [`timedwait`](@ref),
           [`trywait`](@ref).
@@ -214,7 +214,7 @@ wait(sem)
 ```
 
 decrements (locks) the semaphore `sem`.  If the semaphore's value is greater
-than zero, then the decrement proceeds, and the function returns, immediately.
+than zero, then the decrement proceeds and the function returns immediately.
 If the semaphore currently has the value zero, then the call blocks until
 either it becomes possible to perform the decrement (i.e., the semaphore value
 rises above zero), or a signal handler interrupts the call (in which case an
@@ -243,7 +243,7 @@ timedwait(sem, secs)
 ```
 
 decrements (locks) the semaphore `sem`.  If the semaphore's value is greater
-than zero, then the decrement proceeds, and the function returns, immediately.
+than zero, then the decrement proceeds and the function returns immediately.
 If the semaphore currently has the value zero, then the call blocks until
 either it becomes possible to perform the decrement (i.e., the semaphore value
 rises above zero), or the limit of `secs` seconds expires (in which case an
