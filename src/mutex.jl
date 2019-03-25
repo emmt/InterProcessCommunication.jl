@@ -80,15 +80,17 @@ end
 Base.pointer(obj::Mutex) = obj.handle
 Base.pointer(obj::Condition) = obj.handle
 
-Base.lock(mutex::Mutex) =
-    systemerror("pthread_mutex_lock",
-                ccall(:pthread_mutex_lock, Cint, (Ptr{Cvoid},),
-                      mutex.handle) != SUCCESS)
+function Base.lock(mutex::Mutex)
+    code = ccall(:pthread_mutex_lock, Cint, (Ptr{Cvoid},), mutex.handle)
+    code == 0 || throw_system_error("pthread_mutex_lock", code)
+    nothing
+end
 
-Base.unlock(mutex::Mutex) =
-    systemerror("pthread_mutex_unlock",
-                ccall(:pthread_mutex_unlock, Cint, (Ptr{Cvoid},),
-                      mutex.handle) != SUCCESS)
+function Base.unlock(mutex::Mutex)
+    code = ccall(:pthread_mutex_unlock, Cint, (Ptr{Cvoid},), mutex.handle)
+    code == 0 || throw_system_error("pthread_mutex_unlock", code)
+    nothing
+end
 
 function Base.trylock(mutex::Mutex)
     code = ccall(:pthread_mutex_trylock, Cint, (Ptr{Cvoid},), mutex.handle)
@@ -97,20 +99,24 @@ function Base.trylock(mutex::Mutex)
             throw_system_error("pthread_mutex_trylock", code))
 end
 
-signal(cond::Condition) =
-    systemerror("pthread_cond_signal",
-                ccall(:pthread_cond_signal, Cint, (Ptr{Cvoid},),
-                      cond.handle) != SUCCESS)
+function signal(cond::Condition)
+    code = ccall(:pthread_cond_signal, Cint, (Ptr{Cvoid},), cond.handle)
+    code == 0 || throw_system_error("pthread_cond_signal", code)
+    nothing
+end
 
-Base.broadcast(cond::Condition) =
-    systemerror("pthread_cond_broadcast",
-                ccall(:pthread_cond_broadcast, Cint, (Ptr{Cvoid},),
-                      cond.handle) != SUCCESS)
+function Base.broadcast(cond::Condition)
+    code = ccall(:pthread_cond_broadcast, Cint, (Ptr{Cvoid},), cond.handle)
+    code == 0 || throw_system_error("pthread_cond_broadcast", code)
+    nothing
+end
 
-Base.wait(cond::Condition, mutex::Mutex) =
-    systemerror("pthread_cond_wait",
-                ccall(:pthread_cond_wait, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
-                      cond.handle, mutex.handle) != SUCCESS)
+function Base.wait(cond::Condition, mutex::Mutex)
+    code = ccall(:pthread_cond_wait, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
+                 cond.handle, mutex.handle)
+    code == 0 || throw_system_error("pthread_cond_wait", code)
+    nothing
+end
 
 """
 ```julia
@@ -148,10 +154,10 @@ function Base.timedwait(cond::Condition, mutex::Mutex, timeout::Float64)
 end
 
 function Base.timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
-    status = ccall(:pthread_cond_timedwait, Cint,
-                   (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{TimeSpec}),
-                   cond.handle, mutex.handle, Ref(abstime))
-    status == 0 && return true
-    status == Libc.ETIMEDOUT && return false
-    throw_system_error("pthread_cond_timedwait")
+    code = ccall(:pthread_cond_timedwait, Cint,
+                 (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{TimeSpec}),
+                 cond.handle, mutex.handle, Ref(abstime))
+    code == 0 && return true
+    code == Libc.ETIMEDOUT && return false
+    throw_system_error("pthread_cond_timedwait", code)
 end
