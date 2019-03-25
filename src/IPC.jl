@@ -9,16 +9,12 @@
 # Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
-__precompile__(true)
-
 module IPC
 
-using Compat
-using Compat.Printf
-using Compat.Sys: isapple, isbsd, islinux, isunix, iswindows
+using Printf
 
 import Base: convert, unsafe_convert,
-    lock, unlock, trylock, timedwait, broadcast
+    lock, unlock, trylock, timedwait, wait, broadcast
 
 export
     CLOCK_MONOTONIC,
@@ -71,14 +67,6 @@ const PARANOID = true
 
 if stat(joinpath(@__DIR__, "constants.jl")).nlink == 0
     error("File `constants.jl` does not exists.  Run `make all` in the `deps` directory of the `IPC` module.")
-end
-
-@static if VERSION < v"0.7.0-DEV.2562"
-    # FIXME: This should be done by the Compat module?
-    @inline function Base.finalizer(func::Function, obj)
-        finalizer(obj, func)
-        return obj
-    end
 end
 
 include("constants.jl")

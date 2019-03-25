@@ -116,7 +116,7 @@ See also: [`clock_gettime`](@ref), [`clock_settime`](@ref),
 
 """ clock_getres
 
-@static if islinux()
+@static if Sys.islinux()
     function clock_getres(id::Integer)
         res = Ref(TimeSpec(0,0))
         systemerror("clock_getres",
@@ -154,7 +154,7 @@ See also: [`clock_getres`](@ref), [`clock_settime`](@ref),
 
 """ clock_gettime
 
-@static if islinux()
+@static if Sys.islinux()
     function clock_gettime(id::Integer)
         ts = Ref(TimeSpec(0,0))
         systemerror("clock_gettime",

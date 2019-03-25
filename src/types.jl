@@ -170,10 +170,6 @@ struct WrappedArrayHeader
 end
 @assert rem(sizeof(WrappedArrayHeader), sizeof(Int64)) == 0
 
-# FIXME: too bad that the following construction does not work to simplify
-#        writing method signatures:
-# const Dimensions{N} = Union{Vararg{<:Integer,N},Tuple{Vararg{<:Integer,N}}}
-
 mutable struct Semaphore{T}
     ptr::Ptr{Cvoid}
     lnk::T
