@@ -18,8 +18,9 @@ Base.convert(::Type{T}, key::Key) where {T<:Integer} = convert(T, key.value)
 #     Base.convert(::Type{String}, obj::T)
 #     Base.string(obj::T)
 # is not necessary.
-Base.show(io::IO, key::Key) = print(io, "IPC.Key(", dec(key.value), ")")
 Base.show(io::IO, ::MIME"text/plain", arg::Key) = show(io, arg)
+Base.show(io::IO, key::Key) =
+    print(io, "IPC.Key(", string(key.value, base=10), ")")
 
 """
 
