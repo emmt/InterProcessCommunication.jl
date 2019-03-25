@@ -81,39 +81,38 @@ Base.pointer(obj::Mutex) = obj.handle
 Base.pointer(obj::Condition) = obj.handle
 
 function Base.lock(mutex::Mutex)
-    code = ccall(:pthread_mutex_lock, Cint, (Ptr{Cvoid},), mutex.handle)
+    code = ccall(:pthread_mutex_lock, Cint, (Mutex,), mutex)
     code == 0 || throw_system_error("pthread_mutex_lock", code)
     nothing
 end
 
 function Base.unlock(mutex::Mutex)
-    code = ccall(:pthread_mutex_unlock, Cint, (Ptr{Cvoid},), mutex.handle)
+    code = ccall(:pthread_mutex_unlock, Cint, (Mutex,), mutex)
     code == 0 || throw_system_error("pthread_mutex_unlock", code)
     nothing
 end
 
 function Base.trylock(mutex::Mutex)
-    code = ccall(:pthread_mutex_trylock, Cint, (Ptr{Cvoid},), mutex.handle)
+    code = ccall(:pthread_mutex_trylock, Cint, (Mutex,), mutex)
     return (code == 0 ? true :
             code == Libc.EBUSY ? false :
             throw_system_error("pthread_mutex_trylock", code))
 end
 
 function signal(cond::Condition)
-    code = ccall(:pthread_cond_signal, Cint, (Ptr{Cvoid},), cond.handle)
+    code = ccall(:pthread_cond_signal, Cint, (Condition,), cond)
     code == 0 || throw_system_error("pthread_cond_signal", code)
     nothing
 end
 
 function Base.broadcast(cond::Condition)
-    code = ccall(:pthread_cond_broadcast, Cint, (Ptr{Cvoid},), cond.handle)
+    code = ccall(:pthread_cond_broadcast, Cint, (Condition,), cond)
     code == 0 || throw_system_error("pthread_cond_broadcast", code)
     nothing
 end
 
 function Base.wait(cond::Condition, mutex::Mutex)
-    code = ccall(:pthread_cond_wait, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
-                 cond.handle, mutex.handle)
+    code = ccall(:pthread_cond_wait, Cint, (Condition, Mutex), cond, mutex)
     code == 0 || throw_system_error("pthread_cond_wait", code)
     nothing
 end
@@ -155,8 +154,8 @@ end
 
 function Base.timedwait(cond::Condition, mutex::Mutex, abstime::TimeSpec)
     code = ccall(:pthread_cond_timedwait, Cint,
-                 (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{TimeSpec}),
-                 cond.handle, mutex.handle, Ref(abstime))
+                 (Condition, Mutex, Ptr{TimeSpec}),
+                 cond, mutex, Ref(abstime))
     code == 0 && return true
     code == Libc.ETIMEDOUT && return false
     throw_system_error("pthread_cond_timedwait", code)
