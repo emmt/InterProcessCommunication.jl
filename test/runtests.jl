@@ -1,8 +1,6 @@
 module IPCTests
 
-using Compat
-using Compat.Test
-using Compat.Sys: isapple, isbsd, islinux, isunix, iswindows
+using Test
 
 using IPC
 
@@ -95,7 +93,7 @@ end
 end
 
 # Skip semaphore tests for Apple.
-@static if !isapple()
+@static if !Sys.isapple()
 
     @testset "Named Semaphores      " begin
         begin

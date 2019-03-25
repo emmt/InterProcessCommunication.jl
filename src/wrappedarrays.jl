@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 """
@@ -179,12 +179,7 @@ Base.stride(obj::WrappedArray, d::Integer) = stride(obj.arr, d)
 
 Base.copy(obj::WrappedArray) = copy(obj.arr)
 
-@static if isdefined(Base, :copyto!)
-    import Base: copyto!
-else
-    import Compat: copyto!
-end
-copyto!(dest::WrappedArray, src::AbstractArray) =
+Base.copyto!(dest::WrappedArray, src::AbstractArray) =
     (copyto!(dest.arr, src); dest)
 
 Base.reinterpret(::Type{T}, obj::WrappedArray) where {T} =
