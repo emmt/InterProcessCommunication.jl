@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 
 """
@@ -63,7 +63,7 @@ end
 
 function _destroy(obj::Mutex)
     if (ptr = obj.handle) != C_NULL
-        obj.handle = C_NULL
+        obj.handle = C_NULL # to not free twice
         ccall(:pthread_mutex_destroy, Cint, (Ptr{Cvoid},), ptr)
         Libc.free(ptr)
     end
@@ -71,7 +71,7 @@ end
 
 function _destroy(obj::Condition)
     if (ptr = obj.handle) != C_NULL
-        obj.handle = C_NULL
+        obj.handle = C_NULL # to not free twice
         ccall(:pthread_cond_destroy, Cint, (Ptr{Cvoid},), ptr)
         Libc.free(ptr)
     end
@@ -90,8 +90,12 @@ Base.unlock(mutex::Mutex) =
                 ccall(:pthread_mutex_unlock, Cint, (Ptr{Cvoid},),
                       mutex.handle) != SUCCESS)
 
-Base.trylock(mutex::Mutex) =
-    (ccall(:pthread_mutex_trylock, Cint, (Ptr{Cvoid},), mutex.handle) == SUCCESS)
+function Base.trylock(mutex::Mutex)
+    code = ccall(:pthread_mutex_trylock, Cint, (Ptr{Cvoid},), mutex.handle)
+    return (code == 0 ? true :
+            code == Libc.EBUSY ? false :
+            throw_system_error("pthread_mutex_trylock", code))
+end
 
 signal(cond::Condition) =
     systemerror("pthread_cond_signal",
