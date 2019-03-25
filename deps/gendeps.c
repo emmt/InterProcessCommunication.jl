@@ -348,6 +348,29 @@ int main(int argc, char* argv[])
   DEF_CONST(IPC_NOWAIT, " = Cshort(%d)");
   DEF_CONST(SEM_UNDO, "   = Cshort(%d)");
 
+  PUTS("\n# Other constants for System V Semaphore Sets:");
+#ifndef SEMVMX
+# define SEMVMX  32767  /* FIXME: determine this automatically */
+#endif
+#ifdef SEMVMX
+  DEF_CONST(SEMVMX, "= %d # semaphore maximum value");
+#endif
+#ifdef SEMMNI
+  DEF_CONST(SEMMNI, "= %d # max. numb. of semaphore identifiers");
+#endif
+#ifdef SEMMSL
+  DEF_CONST(SEMMSL, "= %d # max. numb. of semaphores per id");
+#endif
+#ifdef SEMMNS
+  DEF_CONST(SEMMNS, "= %d # max. numb. of semaphores in system");
+#endif
+#ifdef SEMOPM
+  DEF_CONST(SEMOPM, "= %d # max. numb. of ops per semop call");
+#endif
+#ifdef SEMAEM
+  DEF_CONST(SEMAEM, "= %d # adjust on exit max value");
+#endif
+
   PUTS("\n# Constants for `struct sembuf`:");
   {
     struct sembuf sb;
