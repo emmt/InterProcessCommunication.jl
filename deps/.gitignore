@@ -1,0 +1,5 @@
+*.o
+deps.jl
+gendeps
+build/
+lib/

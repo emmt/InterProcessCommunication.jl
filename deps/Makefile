@@ -3,19 +3,18 @@ CFLAGS = -O -Wall
 CPPFLAGS =
 LDFLAGS =
 
-all: ../src/constants.jl
+all: deps.jl
 
 clean:
-	rm -f *~ core gencode
+	rm -f *~ core gendeps
 
 man-fstat:
 	LANG=C man fstat | cat
 
-gencode: gencode.c
+gendeps: gendeps.c Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o "$@" "$<" $(LDFLAGS)
 
-../src/constants.jl: constants-header.jl gencode
+deps.jl: gendeps
 	rm -f "$@"
-	cat constants-header.jl >"$@"
-	./gencode >>"$@"
+	./gendeps >>"$@"
 	chmod 444 "$@"

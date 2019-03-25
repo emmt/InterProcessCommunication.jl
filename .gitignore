@@ -1,10 +1,5 @@
 work/
 old/
-deps/constants.jl
-deps/*.o
-deps/gencode
-deps/build
-deps/lib
 docs/build/
 *~
 *.jl.cov

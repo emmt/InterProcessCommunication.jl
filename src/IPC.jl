@@ -65,11 +65,9 @@ export
 
 const PARANOID = true
 
-if stat(joinpath(@__DIR__, "constants.jl")).nlink == 0
-    error("File `constants.jl` does not exists.  Run `make all` in the `deps` directory of the `IPC` module.")
-end
-
-include("constants.jl")
+isfile(joinpath(@__DIR__, "..", "deps", "deps.jl")) ||
+    error("IPC not properly installed.  Please run Pkg.build(\"IPC\")")
+include(joinpath("..", "deps", "deps.jl"))
 include("types.jl")
 include("wrappedarrays.jl")
 include("unix.jl")

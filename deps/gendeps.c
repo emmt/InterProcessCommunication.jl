@@ -1,12 +1,12 @@
 /*
- * gencode.c --
+ * gendeps.c --
  *
- * Generate constants definitions for Julia.
+ * Generate definitions for the IPC.jl package.
  *
  *------------------------------------------------------------------------------
  *
  * This file is part of IPC.jl released under the MIT "expat" license.
- * Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+ * Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).
  */
 
 #include <sys/types.h>
@@ -142,7 +142,26 @@ int main(int argc, char* argv[])
     goto usage;
   }
 
-  fprintf(output, "\n# Some standard C-types:\n");
+#define PUTS(str) fputs(str "\n", output)
+  PUTS("#");
+  PUTS("# deps.jl --");
+  PUTS("#");
+  PUTS("# Definitions for the IPC.jl package.");
+  PUTS("#");
+  PUTS("# *IMPORTANT* This file has been automatically generated, do not edit it");
+  PUTS("#             directly but rather modify the source in `../deps/gencode.c`.");
+  PUTS("#");
+  PUTS("#------------------------------------------------------------------------------");
+  PUTS("#");
+  PUTS("# This file is part of IPC.jl released under the MIT \"expat\" license.");
+  PUTS("# Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).");
+  PUTS("#");
+  PUTS("");
+  PUTS("# Standard codes returned by many functions of the C library:");
+  PUTS("const SUCCESS = Cint( 0)");
+  PUTS("const FAILURE = Cint(-1)");
+
+  PUTS("\n# Some standard C-types:");
   DEF_TYPEOF_TYPE(time_t, "   ");
   DEF_TYPEOF_TYPE(clock_t, "  ");
   DEF_TYPEOF_TYPE(size_t, "   ");
@@ -160,7 +179,7 @@ int main(int argc, char* argv[])
   DEF_TYPEOF_TYPE(blksize_t, "");
   DEF_TYPEOF_TYPE(blkcnt_t, " ");
 
-  fprintf(output, "\n# Bits for creating/opening a file:\n");
+  PUTS("\n# Bits for creating/opening a file:");
   DEF_CONST(O_RDONLY, " = Cint(0o%04o)");
   DEF_CONST(O_WRONLY, " = Cint(0o%04o)");
   DEF_CONST(O_RDWR, "   = Cint(0o%04o)");
@@ -168,7 +187,7 @@ int main(int argc, char* argv[])
   DEF_CONST(O_EXCL, "   = Cint(0o%04o)");
   DEF_CONST(O_TRUNC, "  = Cint(0o%04o)");
 
-  fprintf(output, "\n# Bits for file permissions:\n");
+  PUTS("\n# Bits for file permissions:");
   DEF_CONST(S_IRWXU, " = _typeof_mode_t(0o%04o) # user has read, write, and execute permission");
   DEF_CONST(S_IRUSR, " = _typeof_mode_t(0o%04o) # user has read permission");
   DEF_CONST(S_IWUSR, " = _typeof_mode_t(0o%04o) # user has write permission");
@@ -182,21 +201,21 @@ int main(int argc, char* argv[])
   DEF_CONST(S_IWOTH, " = _typeof_mode_t(0o%04o) # others have write permission");
   DEF_CONST(S_IXOTH, " = _typeof_mode_t(0o%04o) # others have execute permission");
 
-  fprintf(output, "\n# Argument for `lseek`:\n");
+  PUTS("\n# Argument for `lseek`:");
   DEF_CONST(SEEK_SET, " = Cint(%d) # offset is relative to the beginning");
   DEF_CONST(SEEK_CUR, " = Cint(%d) # offset is relative to current position");
   DEF_CONST(SEEK_END, " = Cint(%d) # offset is relative to the end");
 
-  fprintf(output, "\n# Commands for `shmctl`, `semctl` and `msgctl`:\n");
+  PUTS("\n# Commands for `shmctl`, `semctl` and `msgctl`:");
   DEF_CONST(IPC_STAT, " = Cint(%d)");
   DEF_CONST(IPC_SET, "  = Cint(%d)");
   DEF_CONST(IPC_RMID, " = Cint(%d)");
 
-  fprintf(output, "\n# Bits for `shmget`:\n");
+  PUTS("\n# Bits for `shmget`:");
   DEF_CONST(IPC_CREAT, " = Cint(0o%04o)");
   DEF_CONST(IPC_EXCL, "  = Cint(0o%04o)");
 
-  fprintf(output, "\n# Flags for `shmdt`:\n");
+  PUTS("\n# Flags for `shmdt`:");
 #ifdef SHM_EXEC
   DEF_CONST(SHM_EXEC, "   = Cint(%d)");
 #endif
@@ -205,7 +224,7 @@ int main(int argc, char* argv[])
   DEF_CONST(SHM_REMAP, "  = Cint(%d)");
 #endif
 
-  fprintf(output, "\n# Constants for `mmap`, `msync`, etc.:\n");
+  PUTS("\n# Constants for `mmap`, `msync`, etc.:");
   DEF_CONST(PROT_NONE, "     = Cint(%d)");
   DEF_CONST(PROT_READ, "     = Cint(%d)");
   DEF_CONST(PROT_WRITE, "    = Cint(%d)");
@@ -219,10 +238,10 @@ int main(int argc, char* argv[])
   DEF_CONST(MS_SYNC, "       = Cint(%d)");
   DEF_CONST(MS_INVALIDATE, " = Cint(%d)");
 
-  fprintf(output, "\n# Memory page size:\n");
+  PUTS("\n# Memory page size:");
   fprintf(output, "PAGE_SIZE = %ld\n", (long)sysconf(_SC_PAGESIZE));
 
-  fprintf(output, "\n# Fields of `struct timeval` and `struct timespec`:\n");
+  PUTS("\n# Fields of `struct timeval` and `struct timespec`:");
   {
     time_t t;
     struct timeval tv;
@@ -252,16 +271,16 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("timespec_nsec", ts.tv_nsec);
   }
 
-  fprintf(output, "\n# Definitions for the POSIX `clock_*` functions:\n");
+  PUTS("\n# Definitions for the POSIX `clock_*` functions:");
   DEF_TYPEOF_TYPE(clockid_t, "");
   DEF_CONST(CLOCK_REALTIME, "  = convert(_typeof_clockid_t, %d)");
   DEF_CONST(CLOCK_MONOTONIC, " = convert(_typeof_clockid_t, %d)");
 
-  fprintf(output, "\n# Sizes of some standard C types:\n");
+  PUTS("\n# Sizes of some standard C types:");
   DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
   DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
 
-  fprintf(output, "\n# Definitions for `struct stat`:\n");
+  PUTS("\n# Definitions for `struct stat`:");
   DEF_SIZEOF_TYPE("struct_stat       ", struct stat);
   DEF_OFFSETOF("stat_dev     ", struct stat, st_dev);
   DEF_OFFSETOF("stat_ino     ", struct stat, st_ino);
@@ -277,7 +296,7 @@ int main(int argc, char* argv[])
   DEF_OFFSETOF("stat_mtime   ", struct stat, st_mtim);
   DEF_OFFSETOF("stat_ctime   ", struct stat, st_ctim);
 
-  fprintf(output, "\n# Definitions for `struct shmid_ds`:\n");
+  PUTS("\n# Definitions for `struct shmid_ds`:");
   DEF_SIZEOF_TYPE("struct_shmid_ds", struct shmid_ds);
   DEF_OFFSETOF("shm_perm_uid ", struct shmid_ds, shm_perm.uid);
   DEF_OFFSETOF("shm_perm_gid ", struct shmid_ds, shm_perm.gid);
@@ -297,7 +316,7 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("shm_perm_mode  ", ds.shm_perm.mode);
   }
 
-  fprintf(output, "\n# Definitions for `struct semid_ds`:\n");
+  PUTS("\n# Definitions for `struct semid_ds`:");
   DEF_SIZEOF_TYPE("struct_semid_ds", struct semid_ds);
   DEF_OFFSETOF("sem_perm_uid ", struct semid_ds, sem_perm.uid);
   DEF_OFFSETOF("sem_perm_gid ", struct semid_ds, sem_perm.gid);
@@ -313,10 +332,10 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("sem_perm_mode  ", ds.sem_perm.mode);
   }
 
-  fprintf(output, "\n# Special IPC key:\n");
+  PUTS("\n# Special IPC key:");
   DEF_CONST(IPC_PRIVATE, " = _typeof_key_t(%d)");
 
-  fprintf(output, "\n# Flags for `semctl`:\n");
+  PUTS("\n# Flags for `semctl`:");
   DEF_CONST(GETALL, "  = Cint(%d)");
   DEF_CONST(GETNCNT, " = Cint(%d)");
   DEF_CONST(GETPID, "  = Cint(%d)");
@@ -325,11 +344,11 @@ int main(int argc, char* argv[])
   DEF_CONST(SETALL, "  = Cint(%d)");
   DEF_CONST(SETVAL, "  = Cint(%d)");
 
-  fprintf(output, "\n# Flags for `semop`:\n");
+  PUTS("\n# Flags for `semop`:");
   DEF_CONST(IPC_NOWAIT, " = Cshort(%d)");
   DEF_CONST(SEM_UNDO, "   = Cshort(%d)");
 
-  fprintf(output, "\n# Constants for `struct sembuf`:\n");
+  PUTS("\n# Constants for `struct sembuf`:");
   {
     struct sembuf sb;
     DEF_SIZEOF_TYPE("struct_sembuf", struct sembuf);
@@ -341,7 +360,7 @@ int main(int argc, char* argv[])
     DEF_TYPEOF_LVALUE("sem_flg      ", sb.sem_flg);
   }
 
-  fprintf(output, "\n# Definitions for POSIX semaphores:\n");
+  PUTS("\n# Definitions for POSIX semaphores:");
   DEF_SIZEOF_TYPE("sem_t", sem_t);
   fprintf(output, "const SEM_FAILED    = Ptr{Cvoid}(%ld)\n", (long)SEM_FAILED);
   {
@@ -359,12 +378,12 @@ int main(int argc, char* argv[])
     if (val > 0) {
       fprintf(output, "const SEM_VALUE_MAX = Cuint(%ld)\n", val);
     } else {
-      fprintf(output, "const SEM_VALUE_MAX = typemax(Cuint)\n");
+      PUTS("const SEM_VALUE_MAX = typemax(Cuint)");
     }
   }
 
 #if 0
-  fprintf(output, "\n# Constants for `union semnum`:\n");
+  PUTS("\n# Constants for `union semnum`:");
   {
     union semnum {
       int val;
@@ -375,16 +394,16 @@ int main(int argc, char* argv[])
     DEF_OFFSETOF("semnum_ptr", union semnum, ptr);
   }
 
-  fprintf(output, "\n# Semaphore limits:\n");
+  PUTS("\n# Semaphore limits:");
   DEF_CONST(SEMMNI, "= %-6d # max. number of semaphore sets");
   DEF_CONST(SEMMSL, "= %-6d # max. number of semaphores per semaphore set");
   DEF_CONST(SEMMNS, "= %-6d # max. number of semaphores");
 
-  fprintf(output, "\n# Constants for POSIX semaphores:\n");
+  PUTS("\n# Constants for POSIX semaphores:");
   DEF_CONST(SEM_FAILED, "    = Cint(%p)");
 #endif
 
-  fprintf(output, "\n# Definitions for real-time signals:\n");
+  PUTS("\n# Definitions for real-time signals:");
 #ifdef SIGRTMIN
   DEF_CONST(SIGRTMIN, "    = Cint(%d)");
 #endif
@@ -406,7 +425,7 @@ int main(int argc, char* argv[])
   setofbits(output, "_typeof_sigset", sizeof(sigset_t), TRUE);
   DEF_SIZEOF_TYPE("sigset   ", sigset_t);
 
-  fprintf(output, "\n# Definitions for `struct sigaction`:\n");
+  PUTS("\n# Definitions for `struct sigaction`:");
   {
     struct sigaction sa;
     DEF_SIZEOF_TYPE("sigaction", struct sigaction);
@@ -436,7 +455,7 @@ int main(int argc, char* argv[])
   DEF_CONST_CAST(SIG_DFL, " = Ptr{Cvoid}(%lu)", unsigned long);
   DEF_CONST_CAST(SIG_IGN, " = Ptr{Cvoid}(%lu)", unsigned long);
 
-  fprintf(output, "\n# Definitions for `siginfo_t`:\n");
+  PUTS("\n# Definitions for `siginfo_t`:");
   {
     siginfo_t si;
     if (sizeof(si.si_signo) != sizeof(int)) {
@@ -507,7 +526,7 @@ int main(int argc, char* argv[])
   DEF_OFFSETOF("siginfo_fd     ", siginfo_t, si_fd);
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for regular signals:\n");
+  PUTS("\n# Possible `si_code` values for regular signals:");
 #ifdef SI_USER
   DEF_CONST(SI_USER, " = Cint(%d) # kill(2).");
 #endif
@@ -533,7 +552,7 @@ int main(int argc, char* argv[])
   DEF_CONST(SI_TKILL, " = Cint(%d) # tkill(2) or tgkill(2).");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGILL signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGILL signal:");
 #ifdef ILL_ILLOPC
   DEF_CONST(ILL_ILLOPC, " = Cint(%d) # Illegal opcode.");
 #endif
@@ -559,7 +578,7 @@ int main(int argc, char* argv[])
   DEF_CONST(ILL_BADSTK, " = Cint(%d) # Internal stack error.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGFPE signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGFPE signal:");
 #ifdef FPE_INTDIV
   DEF_CONST(FPE_INTDIV, " = Cint(%d) # Integer divide by zero.");
 #endif
@@ -585,7 +604,7 @@ int main(int argc, char* argv[])
   DEF_CONST(FPE_FLTSUB, " = Cint(%d) # Subscript out of range.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGSEGV signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGSEGV signal:");
 #ifdef SEGV_MAPERR
   DEF_CONST(SEGV_MAPERR, " = Cint(%d) # Address not mapped to object.");
 #endif
@@ -593,7 +612,7 @@ int main(int argc, char* argv[])
   DEF_CONST(SEGV_ACCERR, " = Cint(%d) # Invalid permissions for mapped object.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGBUS signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGBUS signal:");
 #ifdef BUS_ADRALN
   DEF_CONST(BUS_ADRALN, " = Cint(%d) # Invalid address alignment.");
 #endif
@@ -610,7 +629,7 @@ int main(int argc, char* argv[])
   DEF_CONST(BUS_MCEERR_AO, " = Cint(%d) # Hardware memory error detected in process but not consumed; action optional.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGTRAP signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGTRAP signal:");
 #ifdef TRAP_BRKPT
   DEF_CONST(TRAP_BRKPT, " = Cint(%d) # Process breakpoint.");
 #endif
@@ -624,7 +643,7 @@ int main(int argc, char* argv[])
   DEF_CONST(TRAP_HWBKPT, " = Cint(%d) # Hardware breakpoint/watchpoint.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGCHLD signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGCHLD signal:");
 #ifdef CLD_EXITED
   DEF_CONST(CLD_EXITED, " = Cint(%d) # Child has exited.");
 #endif
@@ -644,7 +663,7 @@ int main(int argc, char* argv[])
   DEF_CONST(CLD_CONTINUED, " = Cint(%d) # Stopped child has continued.");
 #endif
 
-  fprintf(output, "\n# Possible `si_code` values for a SIGIO/SIGPOLL signal:\n");
+  PUTS("\n# Possible `si_code` values for a SIGIO/SIGPOLL signal:");
 #ifdef POLL_IN
   DEF_CONST(POLL_IN, " = Cint(%d) # Data input available.");
 #endif
@@ -665,11 +684,11 @@ int main(int argc, char* argv[])
 #endif
 
 #ifdef SYS_SECCOMP
-  fprintf(output, "\n# Possible `si_code` value for a SIGSYS signal:\n");
+  PUTS("\n# Possible `si_code` value for a SIGSYS signal:");
   DEF_CONST(SYS_SECCOMP, " = Cint(%d) # Triggered by a seccomp(2) filter rule.");
 #endif
 
-  fprintf(output, "\n# Predefined signal numbers:\n");
+  PUTS("\n# Predefined signal numbers:");
 #ifdef SIGHUP
   DEF_CONST(SIGHUP, "    = Cint(%2d) # Hangup detected on controlling terminal or death of controlling process");
 #endif
