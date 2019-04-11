@@ -5,7 +5,7 @@ default: build/index.html
 clean:
 	rm -f *~ */*~ */*/*~
 
-build/index.html:
+build/index.html: $(SOURCES)
 	julia --color=yes make.jl
 
 .PHOONY: default clean
