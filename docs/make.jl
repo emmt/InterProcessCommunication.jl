@@ -3,13 +3,13 @@ using Documenter
 push!(LOAD_PATH,"../src/")
 using IPC
 
-DEPLOYDOCS = true #(get(ENV, "CI", nothing) == "true")
+DEPLOYDOCS = (get(ENV, "CI", "false") == "true")
 
 makedocs(
     sitename = "IPC.jl Package",
-    #format = Documenter.HTML(
-    #    prettyurls = DEPLOYDOCS,
-    #),
+    format = Documenter.HTML(
+        prettyurls = DEPLOYDOCS,
+    ),
     authors = "Éric Thiébaut and contributors",
     pages = ["index.md", "semaphores.md", "reference.md"]
 )
