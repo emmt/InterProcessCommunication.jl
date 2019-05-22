@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
   PUTS("# Definitions for the IPC.jl package.");
   PUTS("#");
   PUTS("# *IMPORTANT* This file has been automatically generated, do not edit it");
-  PUTS("#             directly but rather modify the source in `../deps/gencode.c`.");
+  PUTS("#             directly but rather modify the source in `../deps/gendeps.c`.");
   PUTS("#");
   PUTS("#------------------------------------------------------------------------------");
   PUTS("#");
