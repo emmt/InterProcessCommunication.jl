@@ -1,4 +1,5 @@
-The IPC.jl package is licensed under the MIT "Expat" License:
+The InterProcessCommunication.jl package is licensed under the MIT "Expat"
+License:
 
 > Copyright (c) 2016: Éric Thiébaut https://github.com/emmt
 >
