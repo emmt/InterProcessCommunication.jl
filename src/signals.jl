@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------
 #
 # This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2017, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).
 #
 # Part of the documentation is more or less directly extracted from the Linux
 # manual pages (http://www.kernel.org/doc/man-pages/).

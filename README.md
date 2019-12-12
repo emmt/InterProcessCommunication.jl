@@ -10,76 +10,57 @@ interacts with other processes or threads by means of BSD (System V) IPC or
 POSIX shared memory, semaphores, message queues or mutexes and condition
 variables.  Package `IPC.jl` intends to provide such facilities.
 
-Documentation is here: https://emmt.github.io/IPC.jl/dev/
+Julia `IPC.jl` package provides:
 
+* Two kinds of **shared memory** objects: *named shared memory* which are
+  identified by their name and old-style (BSD System V) *shared memory
+  segments* which are identified by a key.
 
-Julia IPC package provides:
+* Two kinds of **semaphores**: *named semaphores* which are identified by their
+  name and *anonymous semaphores* which are backed by *memory* objects (usually
+  shared memory) providing the necessary storage.
 
-* Two kinds of [**shared memory**](docs/src/sharedmemory.md) objects:
-  [named shared memory](docs/src/sharedmemory.md#posix-shared-memory) which are
-  identified by their name and BSD (System V)
-  [shared memory segment](docs/src/sharedmemory.md#bsd-shared-memory) which are
-  identified by a key.
+* Management of **signals** including so called real-time signals.
 
-* Two kinds of [**semaphores**](docs/src/semaphores.md): [named
-  semaphores](docs/src/semaphores.md#named-semaphores) which are identified by
-  their name and [anonymous
-  semaphores](docs/src/semaphores.md#anonymous-semaphores) which are backed by
-  *memory* objects (usually shared memory) providing the necessary storage.
-
-* Management of [**signals**](docs/src/signals.md) including so called
-  real-time signals.
+* Array-like objects stored in shared memory.
 
 
 ## Installation
 
-Installation is not yet fully automated in the spirit of Julia packages.  There
-are two possibilities to use the code.
+Installation is not yet fully automated in the spirit of official Julia
+packages but is rather easy.  It is sufficient to:
 
+```julia
+using Pkg
+Pkg.add(PackageSpec(url="https://github.com/emmt/IPC.jl.git"))
+Pkg.build("IPC")
+```
 
-### Clone the code with Julia package manager
+Optionally, you may test the package:
 
-You may use Julia package manager to clone the repository and build the files
-needed by the module:
-
-    Pkg.clone("https://github.com/emmt/IPC.jl.git")
-    Pkg.build("IPC")
+```julia
+Pkg.test("IPC")
+```
 
 Later, it is sufficient to do:
 
-    Pkg.update("IPC")
-    Pkg.build("IPC")
+```julia
+Pkg.update("IPC")
+Pkg.build("IPC")
+```
 
 to pull the latest version and rebuild the dependencies.
 
+All these can be done at the prompt of Julia's package manager:
 
-###  Use your own copy of the repository
 
-You can clone this package into some directory by moving to this directory and
-typing:
-
-    git clone https://github.com/emmt/IPC.jl.git
-
-(you may use GiHub `Clone` button to get the actual URL).  After cloning,
-go to the subdirectory `deps` of the cloned repository and type `make`.
-
-If Julia's package manager is not used, you have to make sure that the
-repository of `IPC.jl` is found by Julia. You may modify Julia global variable
-`LOAD_PATH` for that (for instance in your custom initialization file
-`~/.juliarc.jl`).
-
-If you have `IPC.jl` repository not managed at all by Julia's package manager
-(for instance you have cloned this repository as explained above), updating is
-a matter of:
-
-    cd "$REPOSITORY/deps"
-    git pull
-    make
-
-assuming `$REPOSITORY` is the path to the top level directory of the `IPC.jl`
-repository.  This should compile a small executable `gencode` and generate the
-file `constants.jl` with all constants required by the `IPC` module and which
-may depend on your machine.
+```julia
+... pkg> add https://github.com/emmt/IPC.jl.git"
+... pkg> build IPC
+... pkg> test IPC
+... pkg> update IPC
+... pkg> build IPC
+```
 
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [doc-stable-url]: https://emmt.github.io/IPC.jl/stable
