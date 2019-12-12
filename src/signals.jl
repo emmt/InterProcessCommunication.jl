@@ -26,18 +26,20 @@ sigset[signum] -> boolean
 sigset[signum] = boolean
 fill!(sigset, boolean) -> sigset
 ```
+
+where `signum` is the signal number, an integer greater or equal `1` and less
+or equal`IPC.SIGRTMAX`.  Real-time signals have a number `signum` such that
+`IPC.SIGRTMIN ≤ signum ≤ IPC.SIGRTMAX`
+
+Non-exported methods:
+
 ```julia
 IPC.sigfillset!(sigset)          # same as fill!(signum, true)
 IPC.sigemptyset!(sigset)         # same as fill!(signum, false)
 IPC.sigaddset!(sigset, signum)   # same as sigset[signum] = true
 IPC.sigdelset!(sigset, signum)   # same as sigset[signum] = false
 IPC.sigismember(sigset, signum)  # same as sigset[signum]
-
 ```
-
-`signum` is the signal number, an integer greater or equal `1` and less or
-equal`IPC.SIGRTMAX`.  Real-time signals have a number `signum` such that
-`IPC.SIGRTMIN ≤ signum ≤ IPC.SIGRTMAX`
 
 """ SigSet
 
@@ -130,8 +132,8 @@ sigpending() -> mask
 ```
 
 yields the set of signals that are pending for delivery to the calling thread
-(i.e., the signals which have been raised while blocked).  The returned value is
-an instance of [`SigSet`](@ref).
+(i.e., the signals which have been raised while blocked).  The returned value
+is an instance of [`SigSet`](@ref).
 
 See also: [`sigpending!`](@ref).
 
@@ -170,7 +172,7 @@ signals, call:
 sigprocmask(how, set)
 ```
 
-with `set` a `SigSet` mask and `how` a parameter which specifies how to
+with `set` a [`SigSet`](@ref) mask and `how` a parameter which specifies how to
 interpret `set`:
 
 * `IPC.SIG_BLOCK`: The set of blocked signals is the union of the current set
@@ -200,16 +202,16 @@ const _sigprocmask_symbol = :pthread_sigmask
 sigprocmask!(cur) -> cur
 ```
 
-overwrites `cur`, an instance of `SigSet`, with the current set of blocked
-signals and returns it.  To change the set of blocked signals, call:
+overwrites `cur`, an instance of [`SigSet`](@ref), with the current set of
+blocked signals and returns it.  To change the set of blocked signals, call:
 
 ```julia
 sigprocmask!(how, set, old) -> old
 ```
 
 which changes the set of blocked signals according to `how` and `set` (see
-[`sigprocmask`](@ref)), overwrites `old`, an instance of `SigSet`, with the
-previous set of blocked signals and returns `old`.
+[`sigprocmask`](@ref)), overwrites `old`, an instance of [`SigSet`](@ref), with
+the previous set of blocked signals and returns `old`.
 
 See also: [`sigprocmask`](@ref).
 
@@ -225,8 +227,6 @@ function sigprocmask!(how::Integer, set::SigSet, old::SigSet)
                 _sigprocmask(how, pointer(set), pointer(old)) != SUCCESS)
     return old
 end
-
-@doc @doc(sigprocmask) sigprocmask!
 
 _sigprocmask(how::Integer, set::Ref{SigSet}, old::Ref{SigSet}) =
     ccall(_sigprocmask_symbol, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
@@ -267,14 +267,15 @@ the signal set `mask` becomes pending.  The function accepts the signal
 
 Optional argument `timeout` can be specified to set a limit on the time to wait
 for one the signals to become pending.  `timeout` can be a real number to
-specify a number of seconds or an instance of `TimeSpec`.  If `timeout` is
-`Inf` (the default), it is assumed that there is no limit on the time to wait.
-If `timeout` is a number of seconds smaller or equal zero or if `timeout` is
-`TimeSpec(0,0)`, the methods performs a poll and returns immediately.  It none
-of the signals specified in the signal set `mask` becomes pending during the
-allowed waiting time, a `TimeoutError` exception is raised.
+specify a number of seconds or an instance of [`TimeSpec`](@ref).  If `timeout`
+is `Inf` (the default), it is assumed that there is no limit on the time to
+wait.  If `timeout` is a number of seconds smaller or equal zero or if
+`timeout` is `TimeSpec(0,0)`, the methods performs a poll and returns
+immediately.  It none of the signals specified in the signal set `mask` becomes
+pending during the allowed waiting time, a [`TimeoutError`](@ref) exception is
+thrown.
 
-See also: [`sigwait!`](@ref).
+See also: [`sigwait!`](@ref), [`TimeSpec`](@ref), [`TimeoutError`](@ref).
 
 """
 function sigwait(mask::SigSet)
@@ -287,6 +288,12 @@ end
 sigwait(mask::SigSet, secs::Real)::Cint =
     (secs ≥ Inf ? sigwait(mask) : sigwait(mask, _sigtimedwait_timeout(secs)))
 
+function sigwait(mask::SigSet, timeout::TimeSpec)::Cint
+    signum = _sigtimedwait(pointer(mask), Ptr{SigInfo}(0), Ref(timeout))
+    signum == FAILURE && _throw_sigtimedwait_error()
+    return signum
+end
+
 """
 
 ```julia
@@ -294,19 +301,13 @@ sigwait!(mask, info, timeout=Inf) -> signum
 ```
 
 behaves like [`sigwait`](@ref) but additional argument `info` is an instance of
-`SigInfo` to store the information about the accepted signal, other arguments
-are as for the [`sigwait`](@ref) method.
+[`SigInfo`](@ref) to store the information about the accepted signal, other
+arguments are as for the [`sigwait`](@ref) method.
 
 """
 sigwait!(mask::SigSet, info::SigInfo, secs::Real)::Cint =
     (secs ≥ Inf ? sigwait!(mask, info) :
      sigwait!(mask, info, _sigtimedwait_timeout(secs)))
-
-function sigwait(mask::SigSet, timeout::TimeSpec)::Cint
-    signum = _sigtimedwait(pointer(mask), Ptr{SigInfo}(0), Ref(timeout))
-    signum == FAILURE && _throw_sigtimedwait_error()
-    return signum
-end
 
 function sigwait!(mask::SigSet, info::SigInfo)
     signum = _sigwaitinfo(pointer(mask), pointer(info))
@@ -330,7 +331,7 @@ _sigtimedwait(set::Ref{SigSet}, info::Ref{SigInfo}, timeout::Ref{TimeSpec}) =
     ccall(:sigtimedwait, Cint, (Ptr{SigSet}, Ptr{SigInfo}, Ptr{TimeSpec}),
           set, info, timeout)
 
-function _sigtimedwait_timeout(secs::Real)::TimeSpec
+function _sigtimedwait_timeout(secs::Real)
     isnan(secs) && throw_argument_error("number of seconds is NaN")
     if secs > 0
         # Timeout is in the future.
@@ -369,7 +370,7 @@ where `sa.handler` is the address of a C function (can be `SIG_IGN` or
 by `cfunction`.  If `IPC.SA_INFO` is not set in `sa.flags`, then the signature
 of the handler is:
 
-``julia
+```julia
 function handler(signum::Cint)::Nothing
 ```
 
@@ -377,13 +378,13 @@ that is a function which takes a single argument of type `Cint` and returns
 nothing; if `IPC.SA_INFO` is not set in `sa.flags`, then the signature of the
 handler is:
 
-``julia
+```julia
 function handler(signum::Cint, siginf::Ptr{SigInfo}, unused::Ptr{Cvoid})::Nothing
 ```
 
 that is a function which takes 3 arguments of type `Cint`, `Ptr{SigInfo}`,
-`Ptr{Cvoid}` repectively and which returns nothing.  See [`SigInfo`](@ref)
-for a description of the `siginf` argument by the handler.
+`Ptr{Cvoid}` repectively and which returns nothing.  See [`SigInfo`](@ref) for
+a description of the `siginf` argument by the handler.
 
 Call:
 
@@ -398,7 +399,6 @@ sa = SigAction(handler, mask, flags)
 ```
 
 to provide all fields.
-
 
 See also [`SigInfo`](@ref), [`sigaction`](@ref) and [`sigaction!`](@ref).
 
@@ -416,11 +416,11 @@ Base.show(io::IO, ::MIME"text/plain", obj::SigAction) = show(io, obj)
 """
 
 ```julia
-sigaction(signum) -> cur
+sigaction(signum) -> sigact
 ```
 
-yields the current action taken by the process on receipt of the signal
-`signum`.
+yields the current action (an instance of [`SigAction`](@ref)) taken by the
+process on receipt of the signal `signum`.
 
 ```julia
 sigaction(signum, sigact)
@@ -458,6 +458,8 @@ sigaction!(signum, sigact, oldact) -> oldact
 
 installs `sigact` to be the action taken by the process on receipt of the
 signal `signum`, overwrites `oldact` with the previous action and returns it.
+Arguments `sigact` and `oldact` are instances of [`SigAction`](@ref).
+
 See [`SigAction`](@ref) and [`sigaction`](@ref) for more details.
 
 """
