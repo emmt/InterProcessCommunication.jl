@@ -1,4 +1,9 @@
-SOURCES = Project.toml make.jl src/index.md src/reference.md src/semaphores.md
+SOURCES = \
+    Project.toml \
+    make.jl \
+    src/index.md \
+    src/reference.md \
+    src/semaphores.md
 
 default: build/index.html
 

@@ -1,15 +1,14 @@
 # Inter-Process Communication for Julia
 
-[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md)
-[![Build Status](https://travis-ci.org/emmt/IPC.jl.svg?branch=master)](https://travis-ci.org/emmt/IPC.jl)
-[![Coverage Status](https://coveralls.io/repos/emmt/IPC.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/IPC.jl?branch=master)
-[![codecov.io](http://codecov.io/github/emmt/IPC.jl/coverage.svg?branch=master)](http://codecov.io/github/emmt/IPC.jl?branch=master)
+| **Documentation**               | **License**                     | **Build Status**              | **Code Coverage**                                                   |
+|:--------------------------------|:--------------------------------|:------------------------------|:--------------------------------------------------------------------|
+| [![][doc-dev-img]][doc-dev-url] | [![][license-img]][license-url] | [![][travis-img]][travis-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
 
 Julia has already many methods for inter-process communication (IPC): sockets,
 semaphores, memory mapped files, etc.  You may however want to have Julia
 interacts with other processes or threads by means of BSD (System V) IPC or
 POSIX shared memory, semaphores, message queues or mutexes and condition
-variables.  Module `IPC.jl` intends to provide such facilities.
+variables.  Package `IPC.jl` intends to provide such facilities.
 
 Documentation is here: https://emmt.github.io/IPC.jl/dev/
 
@@ -81,3 +80,24 @@ assuming `$REPOSITORY` is the path to the top level directory of the `IPC.jl`
 repository.  This should compile a small executable `gencode` and generate the
 file `constants.jl` with all constants required by the `IPC` module and which
 may depend on your machine.
+
+[doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[doc-stable-url]: https://emmt.github.io/IPC.jl/stable
+
+[doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[doc-dev-url]: https://emmt.github.io/IPC.jl/dev
+
+[license-url]: ./LICENSE.md
+[license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
+
+[travis-img]: https://travis-ci.org/emmt/IPC.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/emmt/IPC.jl
+
+[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/IPC.jl?branch=master
+[appveyor-url]: https://ci.appveyor.com/project/emmt/IPC-jl/branch/master
+
+[coveralls-img]: https://coveralls.io/repos/emmt/IPC.jl/badge.svg?branch=master&service=github
+[coveralls-url]: https://coveralls.io/github/emmt/IPC.jl?branch=master
+
+[codecov-img]: http://codecov.io/github/emmt/IPC.jl/coverage.svg?branch=master
+[codecov-url]: http://codecov.io/github/emmt/IPC.jl?branch=master

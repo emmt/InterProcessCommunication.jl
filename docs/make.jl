@@ -1,12 +1,12 @@
 using Documenter
 
-push!(LOAD_PATH,"../src/")
+push!(LOAD_PATH, "../src/")
 using IPC
 
-DEPLOYDOCS = (get(ENV, "CI", "false") == "true")
+DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 
 makedocs(
-    sitename = "IPC.jl Package",
+    sitename = "Inter-Process Communication",
     format = Documenter.HTML(
         prettyurls = DEPLOYDOCS,
     ),
