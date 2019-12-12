@@ -8,9 +8,10 @@ Julia has already many methods for inter-process communication (IPC): sockets,
 semaphores, memory mapped files, etc.  You may however want to have Julia
 interacts with other processes or threads by means of BSD (System V) IPC or
 POSIX shared memory, semaphores, message queues or mutexes and condition
-variables.  Package `IPC.jl` intends to provide such facilities.
+variables.  Package `InterProcessCommunication.jl` (*IPC* for short) intends to
+provide such facilities.
 
-Julia `IPC.jl` package provides:
+The `InterProcessCommunication` package provides:
 
 * Two kinds of **shared memory** objects: *named shared memory* which are
   identified by their name and old-style (BSD System V) *shared memory
@@ -32,21 +33,21 @@ packages but is rather easy.  It is sufficient to:
 
 ```julia
 using Pkg
-Pkg.add(PackageSpec(url="https://github.com/emmt/IPC.jl.git"))
-Pkg.build("IPC")
+Pkg.add(PackageSpec(url="https://github.com/emmt/InterProcessCommunication.jl.git"))
+Pkg.build("InterProcessCommunication")
 ```
 
 Optionally, you may test the package:
 
 ```julia
-Pkg.test("IPC")
+Pkg.test("InterProcessCommunication")
 ```
 
 Later, it is sufficient to do:
 
 ```julia
-Pkg.update("IPC")
-Pkg.build("IPC")
+Pkg.update("InterProcessCommunication")
+Pkg.build("InterProcessCommunication")
 ```
 
 to pull the latest version and rebuild the dependencies.
@@ -55,30 +56,30 @@ All these can be done at the prompt of Julia's package manager:
 
 
 ```julia
-... pkg> add https://github.com/emmt/IPC.jl.git"
-... pkg> build IPC
-... pkg> test IPC
-... pkg> update IPC
-... pkg> build IPC
+... pkg> add https://github.com/emmt/InterProcessCommunication.jl.git"
+... pkg> build InterProcessCommunication
+... pkg> test InterProcessCommunication
+... pkg> update InterProcessCommunication
+... pkg> build InterProcessCommunication
 ```
 
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[doc-stable-url]: https://emmt.github.io/IPC.jl/stable
+[doc-stable-url]: https://emmt.github.io/InterProcessCommunication.jl/stable
 
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[doc-dev-url]: https://emmt.github.io/IPC.jl/dev
+[doc-dev-url]: https://emmt.github.io/InterProcessCommunication.jl/dev
 
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/IPC.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/IPC.jl
+[travis-img]: https://travis-ci.org/emmt/InterProcessCommunication.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/emmt/InterProcessCommunication.jl
 
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/IPC.jl?branch=master
-[appveyor-url]: https://ci.appveyor.com/project/emmt/IPC-jl/branch/master
+[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/InterProcessCommunication.jl?branch=master
+[appveyor-url]: https://ci.appveyor.com/project/emmt/InterProcessCommunication-jl/branch/master
 
-[coveralls-img]: https://coveralls.io/repos/emmt/IPC.jl/badge.svg?branch=master&service=github
-[coveralls-url]: https://coveralls.io/github/emmt/IPC.jl?branch=master
+[coveralls-img]: https://coveralls.io/repos/emmt/InterProcessCommunication.jl/badge.svg?branch=master&service=github
+[coveralls-url]: https://coveralls.io/github/emmt/InterProcessCommunication.jl?branch=master
 
-[codecov-img]: http://codecov.io/github/emmt/IPC.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/IPC.jl?branch=master
+[codecov-img]: http://codecov.io/github/emmt/InterProcessCommunication.jl/coverage.svg?branch=master
+[codecov-url]: http://codecov.io/github/emmt/InterProcessCommunication.jl?branch=master

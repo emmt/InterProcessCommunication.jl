@@ -1,7 +1,7 @@
 using Documenter
 
 push!(LOAD_PATH, "../src/")
-using IPC
+using InterProcessCommunication
 
 DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 
@@ -16,6 +16,6 @@ makedocs(
 
 if DEPLOYDOCS
     deploydocs(
-        repo = "github.com/emmt/IPC.jl.git",
+        repo = "github.com/emmt/InterProcessCommunication.jl.git",
     )
 end

@@ -1,12 +1,16 @@
 #
 # utils.jl --
 #
-# Useful methods and constants for IPC module of Julia.
+# Useful methods and constants for InterProcessCommunication (IPC) package of
+# Julia.
 #
 #------------------------------------------------------------------------------
 #
-# This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# This file is part of InterProcessCommunication.jl released under the MIT
+# "expat" license.
+#
+# Copyright (C) 2016-2019, Éric Thiébaut
+# (https://github.com/emmt/InterProcessCommunication.jl).
 #
 
 # A bit of magic for calling C-code:

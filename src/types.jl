@@ -1,12 +1,16 @@
 #
 # types.jl --
 #
-# Definitions fo types for IPC module of Julia.
+# Definitions fo types for the InterProcessCommunication (IPC) package of
+# Julia.
 #
 #------------------------------------------------------------------------------
 #
-# This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# This file is part of InterProcessCommunication.jl released under the MIT
+# "expat" license.
+#
+# Copyright (C) 2016-2019, Éric Thiébaut
+# (https://github.com/emmt/InterProcessCommunication.jl).
 #
 
 """

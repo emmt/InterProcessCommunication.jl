@@ -2,7 +2,7 @@ module IPCTests
 
 using Test
 
-using IPC
+using InterProcessCommunication
 
 @testset "Basic Functions       " begin
     pid = IPC.getpid()

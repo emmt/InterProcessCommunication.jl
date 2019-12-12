@@ -1,15 +1,18 @@
 #
-# IPC.jl --
+# InterProcessCommunication.jl --
 #
 # Inter-Process Communication for Julia.
 #
 #------------------------------------------------------------------------------
 #
-# This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# This file is part of InterProcessCommunication.jl released under the MIT
+# "expat" license.
+#
+# Copyright (C) 2016-2019, Éric Thiébaut
+# (https://github.com/emmt/InterProcessCommunication.jl).
 #
 
-module IPC
+module InterProcessCommunication
 
 export
     CLOCK_MONOTONIC,
@@ -17,7 +20,7 @@ export
     DynamicMemory,
     FileDescriptor,
     FileStat,
-    IPC_NEW,
+    IPC,
     Semaphore,
     SharedMemory,
     ShmArray,
@@ -67,10 +70,12 @@ using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 import Base: convert, unsafe_convert,
     lock, unlock, trylock, timedwait, wait, broadcast
 
+# The following is an exported shortcut to the package.
+const IPC = InterProcessCommunication
 const PARANOID = true
 
 isfile(joinpath(@__DIR__, "..", "deps", "deps.jl")) ||
-    error("IPC not properly installed.  Please run Pkg.build(\"IPC\")")
+    error("InterProcessCommunication not properly installed.  Please run Pkg.build(\"InterProcessCommunication\")")
 include(joinpath("..", "deps", "deps.jl"))
 include("types.jl")
 include("wrappedarrays.jl")
@@ -83,4 +88,4 @@ include("mutex.jl")
 
 @deprecate IPC_NEW IPC.PRIVATE
 
-end # module IPC
+end # module InterProcessCommunication

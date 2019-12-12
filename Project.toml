@@ -1,5 +1,5 @@
-name = "IPC"
-uuid = "f281d60f-43a8-58ec-a5a9-8d9e975ad880"
+name = "InterProcessCommunication"
+uuid = "a7427343-1d15-5490-a218-bfcb7db836a2"
 authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
 version = "0.1.0"
 

@@ -5,8 +5,11 @@
 #
 #------------------------------------------------------------------------------
 #
-# This file is part of IPC.jl released under the MIT "expat" license.
-# Copyright (C) 2016-2018, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+# This file is part of InterProcessCommunication.jl released under the MIT
+# "expat" license.
+#
+# Copyright (C) 2016-2018, Éric Thiébaut
+# (https://github.com/emmt/InterProcessCommunication.jl).
 #
 
 """
