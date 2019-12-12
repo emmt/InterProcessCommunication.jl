@@ -1,8 +1,3 @@
-CC = gcc
-CFLAGS = -O -Wall
-CPPFLAGS =
-LDFLAGS =
-
 all: deps.jl
 
 clean:
