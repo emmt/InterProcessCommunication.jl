@@ -15,7 +15,7 @@ IPC.Mutex()
 ```
 
 yields an initialized POSIX mutex.  Associated ressources are automatically
-destroy when the returned object is grabage collected.  It is however the
+destroyed when the returned object is garbage collected.  It is however the
 user's responsability to ensure that the object is eventually unlocked.
 
 See also: [`IPC.Condition`](@ref), [`lock`](@ref), [`unlock`](@ref),
@@ -27,11 +27,12 @@ mutable struct Mutex
     function Mutex()
         buf = Libc.malloc(_sizeof_pthread_mutex_t)
         buf != C_NULL || throw(OutOfMemoryError())
-        if ccall(:pthread_mutex_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
-                 buf, C_NULL) != SUCCESS
+        code = ccall(:pthread_mutex_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
+                     buf, C_NULL)
+        if code != SUCCESS
             # In principle, `pthread_mutex_init` should always return 0.
             Libc.free(buf)
-            throw_system_error("pthread_mutex_init")
+            throw_system_error("pthread_mutex_init", code)
         end
         return finalizer(_destroy, new(buf))
     end
@@ -43,19 +44,21 @@ IPC.Condition()
 ```
 
 yields an initialized POSIX condition variable.  Associated ressources are
-automatically destroy when the returned object is grabage collected.
+automatically destroyed when the returned object is garbage collected.
 
 See also: [`IPC.Mutex`](@ref).
+
 """
 mutable struct Condition
     handle::Ptr{Cvoid}
     function Condition()
         buf = Libc.malloc(_sizeof_pthread_cond_t)
         buf != C_NULL || throw(OutOfMemoryError())
-        if ccall(:pthread_cond_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
-                 buf, C_NULL) != SUCCESS
+        code = ccall(:pthread_cond_init, Cint, (Ptr{Cvoid}, Ptr{Cvoid}),
+                     buf, C_NULL)
+        if code != SUCCESS
             Libc.free(buf)
-            throw_system_error("pthread_cond_init")
+            throw_system_error("pthread_cond_init", code)
         end
         return finalizer(_destroy, new(buf))
     end
@@ -118,16 +121,23 @@ function Base.wait(cond::Condition, mutex::Mutex)
 end
 
 """
+
 ```julia
-timedwait(cond, mutex, sec)
-timedwait(cond, mutex, sec, nsec)
-timedwait(cond, mutex, abstime)
+timedwait(cond, mutex, sec)        -> bool
+timedwait(cond, mutex, sec, nsec)  -> bool
+timedwait(cond, mutex, abstime)    -> bool
 ```
 
-A timeout relative to the current time can be specified either by the
-number of seconds `sec` (can be fractional) to wait or by the numbers of
-seconds and nanoseconds `sec` and `sec` (both integers).  Otherwise, an
-absolute timeout can be specified by `abstime` (of type `IPC.TimeSpec`).
+waits for condition variable `cond` to be signaled using lock `mutex` for
+synchronization but no longer than a time limit.
+
+A timeout relative to the current time can be specified either by the number of
+seconds `sec` (can be fractional) to wait or by the numbers of seconds and
+nanoseconds `sec` and `sec` (both integers).  Otherwise, an absolute timeout
+can be specified by `abstime` (of type [`IPC.TimeSpec`](@ref)).
+
+The returned value is `true` if the condition is signalled before expiration of
+the timeout, and `false` otherwise.
 
 """
 Base.timedwait(cond::Condition, mutex::Mutex, sec::Integer, nsec::Integer = 0) =
