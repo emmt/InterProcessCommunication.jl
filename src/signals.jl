@@ -124,6 +124,7 @@ _sigqueue(pid::Integer, sig::Integer, val::Integer) =
     ccall(:sigqueue, Cint, (_typeof_pid_t, Cint, _typeof_sigval_t), pid, sig, val)
 
 """
+
 ```julia
 sigpending() -> mask
 ```
@@ -132,19 +133,22 @@ yields the set of signals that are pending for delivery to the calling thread
 (i.e., the signals which have been raised while blocked).  The returned value is
 an instance of [`SigSet`](@ref).
 
-The call:
+See also: [`sigpending!`](@ref).
+
+"""
+sigpending() = sigpending!(SigSet())
+
+"""
+
 ```julia
 sigpending!(mask) -> mask
 ```
 
 overwites `mask` with the set of pending signals and returns its argument.
 
-""" sigpending
+See also: [`sigpending`](@ref).
 
-@doc @doc(sigpending) sigpending!
-
-sigpending() = sigpending!(SigSet())
-
+"""
 function sigpending!(mask::SigSet)
     systemerror("sigpending", _sigpending(pointer(mask)) != SUCCESS)
     return mask
@@ -155,23 +159,12 @@ _sigpending(mask::Ref{SigSet}) =
 
 """
 
-The `sigprocmask` and `sigprocmask!` methods can be used to examine and change
-blocked signals for the thread.
-
-The call:
-
 ```julia
 sigprocmask() -> cur
 ```
 
-yields the current set of blocked signals; the storage for the result can also
-be provided:
-
-```julia
-sigprocmask!(cur) -> cur
-```
-
-To change the set of blocked signals, call:
+yields the current set of blocked signals.  To change the set of blocked
+signals, call:
 
 ```julia
 sigprocmask(how, set)
@@ -189,39 +182,51 @@ interpret `set`:
 
 * `IPC.SIG_SETMASK`: The set of blocked signals is set to the argument `set`.
 
-Finally, the call:
+See also: [`sigprocmask!`](@ref).
+
+"""
+sigprocmask() = sigprocmask!(SigSet())
+
+sigprocmask(how::Integer, set::SigSet) =
+    systemerror(string(_sigprocmask_symbol),
+                _sigprocmask(how, pointer(set), Ptr{SigSet}(0)) != SUCCESS)
+
+# Constant `_sigprocmask_symbol` is `:sigprocmask` or `:pthread_sigmask`.
+const _sigprocmask_symbol = :pthread_sigmask
+
+"""
+
+```julia
+sigprocmask!(cur) -> cur
+```
+
+overwrites `cur`, an instance of `SigSet`, with the current set of blocked
+signals and returns it.  To change the set of blocked signals, call:
 
 ```julia
 sigprocmask!(how, set, old) -> old
 ```
 
-changes the set of blocked signals according to `how` and `set` and oberwrites
-`old` the previous set of blocked signals.
+which changes the set of blocked signals according to `how` and `set` (see
+[`sigprocmask`](@ref)), overwrites `old`, an instance of `SigSet`, with the
+previous set of blocked signals and returns `old`.
 
-""" sigprocmask
+See also: [`sigprocmask`](@ref).
 
-# Constant `_sigprocmask_symbol` is `:sigprocmask` or `:pthread_sigmask`.
-const _sigprocmask_symbol = :pthread_sigmask
-
-@doc @doc(sigprocmask) sigprocmask!
-
-sigprocmask() = sigprocmask!(SigSet())
-
+"""
 function sigprocmask!(cur::SigSet)
     systemerror(string(_sigprocmask_symbol),
                 _sigprocmask(IPC.SIG_BLOCK, Ptr{SigSet}(0), pointer(cur)) != SUCCESS)
     return cur
 end
 
-sigprocmask(how::Integer, set::SigSet) =
-    systemerror(string(_sigprocmask_symbol),
-                _sigprocmask(how, pointer(set), Ptr{SigSet}(0)) != SUCCESS)
-
 function sigprocmask!(how::Integer, set::SigSet, old::SigSet)
     systemerror(string(_sigprocmask_symbol),
                 _sigprocmask(how, pointer(set), pointer(old)) != SUCCESS)
     return old
 end
+
+@doc @doc(sigprocmask) sigprocmask!
 
 _sigprocmask(how::Integer, set::Ref{SigSet}, old::Ref{SigSet}) =
     ccall(_sigprocmask_symbol, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
@@ -269,14 +274,7 @@ If `timeout` is a number of seconds smaller or equal zero or if `timeout` is
 of the signals specified in the signal set `mask` becomes pending during the
 allowed waiting time, a `TimeoutError` exception is raised.
 
-A variant:
-
-```julia
-sigwait!(mask, info, timeout=Inf) -> signum
-```
-
-where `info` is an instance of `SigInfo` to stores the information about the
-accepted signal and other arguments are as for the `sigwait` method.
+See also: [`sigwait!`](@ref).
 
 """
 function sigwait(mask::SigSet)
@@ -289,6 +287,17 @@ end
 sigwait(mask::SigSet, secs::Real)::Cint =
     (secs ≥ Inf ? sigwait(mask) : sigwait(mask, _sigtimedwait_timeout(secs)))
 
+"""
+
+```julia
+sigwait!(mask, info, timeout=Inf) -> signum
+```
+
+behaves like [`sigwait`](@ref) but additional argument `info` is an instance of
+`SigInfo` to store the information about the accepted signal, other arguments
+are as for the [`sigwait`](@ref) method.
+
+"""
 sigwait!(mask::SigSet, info::SigInfo, secs::Real)::Cint =
     (secs ≥ Inf ? sigwait!(mask, info) :
      sigwait!(mask, info, _sigtimedwait_timeout(secs)))
@@ -344,49 +353,21 @@ function _throw_sigtimedwait_error()
 end
 
 """
-```julia
-sigaction(signum) -> cur
-```
 
-yields the current action taken by the process on receipt of the signal
-`signum`.
+`SigAction` is the counterpart of the C `struct sigaction` structure.  It is
+used to specify the action taken by a process on receipt of a signal.  Assuming
+`sa` is an instance of `SigAction`, its fields are:
 
 ```julia
-sigaction(signum, sigact)
-```
-
-installs `sigact` to be the action taken by the process on receipt of the
-signal `signum`.
-
-```julia
-sigaction!(signum, sigact, oldact) -> oldact
-```
-
-installs `sigact` to be the action taken by the process on receipt of the
-signal `signum`, overwrites `oldact` with the previous action and returns it.
-
-Note that `signum` cannot be `SIGKILL` nor `SIGSTOP`.
-
-The action taken by a process on receipt of a signal is specified by an
-instance of `SigAction` wich is used as follows:
-
-``julia
-sa = SigAction()   # create a new empty structure
 sa.handler         # address of a signal handler
 sa.mask            # mask of the signals to block
 sa.flags           # bitwise flags
 ```
 
-or
-
-```julia
-sa = SigAction(handler, mask, flags)
-```
-
-Here `sa.handler` is the address of a C function (can be `SIG_IGN` or
+where `sa.handler` is the address of a C function (can be `SIG_IGN` or
 `SIG_DFL`) to be called on receipt of the signal.  This function may be given
-by [`cfunction`](@ref).  If `IPC.SA_INFO` is not set in `sa.flags`, then the
-signature of the handler is:
+by `cfunction`.  If `IPC.SA_INFO` is not set in `sa.flags`, then the signature
+of the handler is:
 
 ``julia
 function handler(signum::Cint)::Nothing
@@ -404,13 +385,24 @@ that is a function which takes 3 arguments of type `Cint`, `Ptr{SigInfo}`,
 `Ptr{Cvoid}` repectively and which returns nothing.  See [`SigInfo`](@ref)
 for a description of the `siginf` argument by the handler.
 
-See also: [`SigInfo`](@ref).
+Call:
 
-""" SigAction
+```julia
+sa = SigAction()
+```
 
-@doc @doc(SigAction) sigaction
-@doc @doc(SigAction) sigaction!
+to create a new empty structure or
 
+```julia
+sa = SigAction(handler, mask, flags)
+```
+
+to provide all fields.
+
+
+See also [`SigInfo`](@ref), [`sigaction`](@ref) and [`sigaction!`](@ref).
+
+"""
 SigAction() = SigAction(C_NULL, SigSet(), 0)
 
 function Base.show(io::IO, obj::SigAction)
@@ -421,6 +413,27 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", obj::SigAction) = show(io, obj)
 
+"""
+
+```julia
+sigaction(signum) -> cur
+```
+
+yields the current action taken by the process on receipt of the signal
+`signum`.
+
+```julia
+sigaction(signum, sigact)
+```
+
+installs `sigact` (an instance of [`SigAction`](@ref)) to be the action taken
+by the process on receipt of the signal `signum`.
+
+Note that `signum` cannot be `SIGKILL` nor `SIGSTOP`.
+
+See also [`SigAction`](@ref) and [`sigaction!`](@ref).
+
+"""
 function sigaction(signum::Integer)
     buf = _sigactionbuffer()
     ptr = pointer(buf)
@@ -437,6 +450,17 @@ function sigaction(signum::Integer, sigact::SigAction)
     systemerror("sigaction", _sigaction(signum, ptr, C_NULL) != SUCCESS)
 end
 
+"""
+
+```julia
+sigaction!(signum, sigact, oldact) -> oldact
+```
+
+installs `sigact` to be the action taken by the process on receipt of the
+signal `signum`, overwrites `oldact` with the previous action and returns it.
+See [`SigAction`](@ref) and [`sigaction`](@ref) for more details.
+
+"""
 function sigaction!(signum::Integer, sigact::SigAction, old::SigAction)
     newbuf = _sigactionbuffer()
     newptr = pointer(newbuf)

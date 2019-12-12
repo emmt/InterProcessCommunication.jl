@@ -70,7 +70,6 @@ WrappedArray(id; readonly=false)
 
 ## See Also
 
-[`pointer`](@ref), [`sizeof`](@ref), [`Base.datatype_alignment`](@ref),
 [`SharedMemory`](@ref).
 
 """
@@ -239,7 +238,7 @@ const _WA_TYPES = (( 1, Int8,       "signed 8-bit integer"),
                    ( 8, UInt64,     "unsigned 64-bit integer"),
                    ( 9, Float32,    "32-bit floating-point"),
                    (10, Float64,    "64-bit floating-point"),
-                   (11, ComplexF32,  "64-bit complex"),
+                   (11, ComplexF32, "64-bit complex"),
                    (12, ComplexF64, "128-bit complex"))
 
 const _WA_ETYPES = DataType[T for (i, T, str) in _WA_TYPES]

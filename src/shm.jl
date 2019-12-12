@@ -15,7 +15,7 @@
 SharedMemory(id, len; perms=0o600, volatile=true)
 ```
 
-yields a new shared memory object identified by `id` and whose size if `len`
+yields a new shared memory object identified by `id` and whose size is `len`
 bytes.  The identifier `id` can be a string starting by a `'/'` to create a
 POSIX shared memory object or a System V IPC key to create a System V shared
 memory segment.  In this latter case, the key can be `IPC.PRIVATE` to
@@ -38,35 +38,25 @@ SharedMemory(id; readonly=false)
 where `id` is the shared memory identifier (a string, an IPC key or a System V
 IPC identifier of shared memory segment as returned by `ShmId`).  Keyword
 `readonly` can be set true if only read access is needed.  Note that method
-`identifier(shm)` may be called to retrieve the dientifier of shared memory
-`shm`.
+`shmid(obj)` may be called to retrieve the identifier of the shared memory
+object `obj`.
 
 Some methods are extended for shared memory objects.  Assuming `shm` is an
 instance of `SharedMemory`, then:
 
-
 ```julia
-pointer(shm)    # yields the nase address of the shared memory
+pointer(shm)    # yields the base address of the shared memory
 sizeof(shm)     # yields the number of bytes of the shared memory
 shmid(shm)      # yields the identifier the shared memory
 ```
 
-To ensure that shared memory `shm` is eventually destroyed, call:
+To ensure that shared memory object `shm` is eventually destroyed, call:
 
 ```julia
 rm(shm)
 ```
 
-The `rm` method may also be called to remove an existing shared memory segment
-or object.  There are several possibilities:
-
-```julia
-rm(SharedMemory, name)  # `name` identifies a POSIX shared memory object
-rm(SharedMemory, key)   # `key` is associated with a BSD shared memory segment
-rm(id)                  # `id` is the identifier of a BSD shared memory segment
-```
-
-See also: [`shmid`](@ref).
+See also [`shmid`](@ref), [`shmrm`](@ref).
 
 """
 function SharedMemory(key::Key, len::Integer;
@@ -265,13 +255,39 @@ shmid(arr::WrappedArray{T,N,<:SharedMemory}) where {T,N} = shmid(arr.mem)
 shmid(id::ShmId) = id
 shmid(key::Key, args...) = ShmId(key, args...)
 
-Base.rm(shm::SharedMemory{String}) = rm(SharedMemory, shmid(shm))
+Base.rm(shm::SharedMemory) = shmrm(shm)
+Base.rm(id::ShmId) = shmrm(id)
+Base.rm(::Type{SharedMemory}, key::Key) = shmrm(key)
+Base.rm(::Type{SharedMemory}, name::AbstractString) = shmrm(name)
 
-Base.rm(shm::SharedMemory{ShmId}) = rm(shmid(shm))
+"""
 
-Base.rm(::Type{SharedMemory}, key::Key) = rm(ShmId(key))
+```julia
+shmrm(arg)
+```
 
-function Base.rm(::Type{SharedMemory}, name::AbstractString)
+removes the shared memory associated with `arg`.  If `arg` is a name, the
+corresponding POSIX named shared memory is unlinked.  If `arg` is a key or
+identifier of a BSD shared memory segment, the segment is marked to be
+eventually destroyed.  Argument `arg` can also be a `SharedMemory` object.
+
+The `rm` method may also be called to remove an existing shared memory segment
+or object.  There are several possibilities:
+
+```julia
+rm(SharedMemory, name)  # `name` identifies a POSIX shared memory object
+rm(SharedMemory, key)   # `key` is associated with a BSD shared memory segment
+rm(id)                  # `id` is the identifier of a BSD shared memory segment
+rm(shm)                 # `shm` is an instance of `SharedMemory`
+```
+
+See also: [`SharedMemory`](@ref), [`shmid`](@ref), [`shmat`](@ref).
+
+"""
+shmrm(shm::SharedMemory) = shmrm(shmid(shm))
+shmrm(key::Key) = shmrm(shmid(key))
+
+shmrm(name::AbstractString) = begin
     if _shm_unlink(name) != SUCCESS
         errno = Libc.errno()
         if errno != Libc.ENOENT
@@ -280,7 +296,7 @@ function Base.rm(::Type{SharedMemory}, name::AbstractString)
     end
 end
 
-function Base.rm(id::ShmId)
+shmrm(id::ShmId) = begin
     if _shmrm(name) != SUCCESS
         # Only throw an error if not an already removed shared memory segment.
         errno = Libc.errno()
@@ -289,6 +305,7 @@ function Base.rm(id::ShmId)
         end
     end
 end
+
 
 #------------------------------------------------------------------------------
 # System V Shared Memory
@@ -370,14 +387,14 @@ Arguments are:
 * `siz` specifies the size (in bytes) of the shared memory segment (may be
   rounded up to multiple of the memory page size).
 
-* `flg` specify bitwise flags.  The least significant 9 bits specify the
-  permissions granted to the owner, group, and others.  These bits have the
-  same format, and the same meaning, as the mode argument of `chmod`.  Bit
-  `IPC_CREAT` can be set to create a new segment.  If this flag is not used,
-  then `shmget` will find the segment associated with `key` and check to see if
-  the user has permission to access the segment.  Bit `IPC_EXCL` can be set in
-  addition to `IPC_CREAT` to ensure that this call creates the segment.  If
-  `IPC_EXCL` and `IPC_CREAT` are both set, the call will fail if the segment
+* `flg` is a bitwise combination of flags.  The least significant 9 bits
+  specify the permissions granted to the owner, group, and others.  These bits
+  have the same format, and the same meaning, as the mode argument of `chmod`.
+  Bit `IPC_CREAT` can be set to create a new segment.  If this flag is not
+  used, then `shmget` will find the segment associated with `key` and check to
+  see if the user has permission to access the segment.  Bit `IPC_EXCL` can be
+  set in addition to `IPC_CREAT` to ensure that this call creates the segment.
+  If `IPC_EXCL` and `IPC_CREAT` are both set, the call will fail if the segment
   already exists.
 
 """
@@ -399,9 +416,9 @@ shmat(id, readonly) -> ptr
 attaches a shared memory segment to the address space of the caller.  Argument
 `id` is the identifier of the shared memory segment.  Boolean argument
 `readonly` specifies whether to attach the segment for read-only access;
-otherwise, the segment is attached for read and write access and the process
-must have read and write permission for the segment.  The returned value is the
-pointer to access the shared memory segment.
+otherwise, the segment is attached for read and write accesses and the process
+must have read and write permissions for the segment.  The returned value is
+the pointer to access the shared memory segment.
 
 See also: [`shmdt`](@ref), [`shmrm`](@ref).
 
@@ -443,7 +460,7 @@ performs the control operation specified by `cmd` on the System V shared memory
 segment whose identifier is given in `id`.  The `buf` argument is a pointer to
 a `shmid_ds` C structure.
 
-See also: [`shminfo`](@ref), [`shmcfg`](@ref), [`shmrm`](@ref).
+See also [`shminfo`](@ref), [`shmcfg`](@ref) and [`shmrm`](@ref).
 
 """
 shmctl(id::ShmId, cmd::Integer, buf::Union{DenseVector,Ptr}) =
@@ -455,19 +472,20 @@ _shmctl(id::Integer, cmd::Integer, buf::Union{DenseVector,Ptr}) =
 _shmrm(id::Integer) = _shmctl(id, IPC_RMID, C_NULL)
 
 """
-# Configure access permissions of a System V shared memory segment
-
-To change the access permissions of a System V IPC shared memory segment, call:
 
 ```julia
 shmcfg(arg, perms) -> id
 ```
 
-where `perms` specifies bitwise flags with the new permissions.  The first
-argument can be the identifier of the shared memory segment, a shared array
-attached to the shared memory segment or the System V IPC key associated with
-the shared memory segment.  In all cases, the identifier of the shared memory
-segment is returned.
+changes the access permissions of a System V IPC shared memory segment.
+Argument `perms` specifies bitwise flags with the new permissions.  The first
+argument `arg` can be the identifier of the shared memory segment, a shared
+array attached to the shared memory segment or the System V IPC key associated
+with the shared memory segment.  In all cases, the identifier of the shared
+memory segment is returned.
+
+See also [`ShmId`](@ref), [`shmget`](@ref), [`shmctl`](@ref) and
+[`SharedMemory`](@ref).
 
 """
 function shmcfg(id::ShmId, perms::_typeof_shm_perm_mode)
@@ -489,29 +507,43 @@ shmcfg(id::ShmId, perms::Integer) =
 shmcfg(arg::Union{ShmArray,Key}, perms::Integer) =
     shmcfg(ShmId(arg), perms)
 
-"""
-# Retrieve information about a System V shared memory segment
 
-To retrieve information about a System V shared memory segment, call:
+"""
+
+`ShmInfo` is the structure used to store information about a System V shared memory segment.
+The call `ShmInfo(arg)` is equivalent to [`shminfo(arg)`](@ref shminfo).
+
+"""
+ShmInfo(arg::Union{ShmId,ShmArray,Key}) = shminfo(arg)
+
+"""
 
 ```julia
-ShmInfo(arg) -> info
+shminfo(arg) -> info
 ```
 
-Memory for the `ShmInfo` structure may be provided:
+yields information about the System V shared memory segment identified or
+associated with `arg` which can be the identifier of the shared memory segment,
+a shared array attached to the shared memory segment or the System V IPC key
+associated with the shared memory segment.
+
+See also [`ShmInfo`](@ref), [`ShmId`](@ref), [`shmget`](@ref), [`shmat`](@ref),
+[`SharedMemory`](@ref).
+
+"""
+shminfo(arg::Union{ShmId,ShmArray,Key}) = shminfo!(arg, ShmInfo())
+
+"""
 
 ```julia
 shminfo!(arg, info) -> info
 ```
 
-where `info` is an instance of `ShmInfo` and the first argument can be
-the identifier of the shared memory segment, a shared array attached to the
-shared memory segment or the System V IPC key associated with the shared memory
-segment.  In all cases, `info` is returned.
+overwrites `info` (an instance of [`ShmInfo`](@ref)) with the information about
+the System V shared memory segment identified or associated with `arg`.  See
+[`shminfo`](@ref) for more details.
 
 """
-ShmInfo(arg::Union{ShmId,ShmArray,Key}) = shminfo!(arg, ShmInfo())
-
 function shminfo!(id::ShmId, info::ShmInfo)
     buf = _workspace(_sizeof_struct_shmid_ds)
     shmctl(id, IPC_STAT, buf)
@@ -534,5 +566,3 @@ end
 shminfo!(arg, info::ShmInfo) = shminfo!(ShmId(arg), info)
 
 shminfo!(key::Key, info::ShmInfo) = shminfo!(ShmId(key, true), info)
-
-@doc @doc(ShmInfo) shminfo!

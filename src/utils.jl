@@ -61,6 +61,7 @@ function Key(path::AbstractString, proj::Cint)
 end
 
 """
+
 ```julia
 gettimeofday() -> tv
 ```
@@ -79,6 +80,7 @@ function gettimeofday()
 end
 
 """
+
 ```julia
 nanosleep(t) -> rem
 ```
@@ -90,8 +92,8 @@ sleeps for `t` seconds with nanosecond precision and returns the remaining time
 
 The `sleep` method provided by Julia has only millisecond precision.
 
-See also: [`gettimeofday`](@ref), [`sleep`](@ref), [`IPC.TimeSpec`](@ref),
-          [`IPC.TimeVal`](@ref).
+See also [`gettimeofday`](@ref), [`IPC.TimeSpec`](@ref) and
+[`IPC.TimeVal`](@ref).
 
 """
 nanosleep(t::Union{Real,TimeVal}) = nanosleep(TimeSpec(t))
@@ -103,6 +105,7 @@ function nanosleep(ts::TimeSpec)
 end
 
 """
+
 ```julia
 clock_getres(id) -> ts
 ```
@@ -111,9 +114,9 @@ yields the resolution (precision) of the specified clock `id`. The result is an
 instance of `IPC.TimeSpec`.  Clock identifier `id` can be `CLOCK_REALTIME` or
 `CLOCK_MONOTONIC` (described in [`clock_gettime`](@ref)).
 
-See also: [`clock_gettime`](@ref), [`clock_settime`](@ref),
-          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
-          [`IPC.TimeVal`](@ref).
+See also [`clock_gettime`](@ref), [`clock_settime`](@ref),
+[`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref) and
+[`IPC.TimeVal`](@ref).
 
 """ clock_getres
 
@@ -133,6 +136,7 @@ else
 end
 
 """
+
 ```julia
 clock_gettime(id) -> ts
 ```
@@ -149,9 +153,9 @@ yields the time of the specified clock `id`.  The result is an instance of
   since some unspecified starting point.  This clock is not affected by
   discontinuous jumps in the system time.
 
-See also: [`clock_getres`](@ref), [`clock_settime`](@ref),
-          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
-          [`IPC.TimeVal`](@ref).
+See also [`clock_getres`](@ref), [`clock_settime`](@ref),
+[`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref) and
+[`IPC.TimeVal`](@ref).
 
 """ clock_gettime
 
@@ -173,6 +177,7 @@ end
 @doc @doc(clock_gettime) CLOCK_MONOTONIC
 
 """
+
 ```julia
 clock_settime(id, ts)
 ```
@@ -182,9 +187,9 @@ instance of `IPC.TimeSpec` or a number of seconds.  Clock identifier `id` can
 be `CLOCK_REALTIME` or `CLOCK_MONOTONIC` (described in
 [`clock_gettime`](@ref)).
 
-See also: [`clock_getres`](@ref), [`clock_gettime`](@ref),
-          [`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref),
-          [`IPC.TimeVal`](@ref).
+See also [`clock_getres`](@ref), [`clock_gettime`](@ref),
+[`gettimeofday`](@ref), [`nanosleep`](@ref), [`IPC.TimeSpec`](@ref) and
+[`IPC.TimeVal`](@ref).
 
 """
 clock_settime(id::Integer, sec::Real) =
@@ -197,11 +202,44 @@ clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
     systemerror("clock_settime",
                 ccall(:clock_settime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
                       id, ts) != SUCCESS)
+"""
 
+```julia
+TimeSpec(sec, nsec)
+```
+
+yields an instance of `TimeSpec` for an integer number of seconds `sec` and an
+integer number of nanoseconds `nsec` since the Epoch.
+
+```julia
+TimeSpec(sec)
+```
+
+yields an instance of `TimeSpec` for a, possibly fractional, number of seconds
+`sec` since the Epoch.  Argument can also be an instance of [`TimeVal`](@ref).
+
+"""
 TimeSpec(sec::Real) = convert(TimeSpec, sec)
 TimeSpec(ts::TimeSpec) = ts
 TimeSpec(tv::TimeVal) = convert(TimeSpec, tv)
 
+"""
+
+```julia
+TimeVal(sec, usec)
+```
+
+yields an instance of `TimeVal` for an integer number of seconds `sec` and an
+integer number of microseconds `usec` since the Epoch.
+
+```julia
+TimeVal(sec)
+```
+
+yields an instance of `TimeVal` with a, possibly fractional, number of seconds
+`sec` since the Epoch.  Argument can also be an instance of [`TimeSpec`](@ref).
+
+"""
 TimeVal(sec::Real) = convert(TimeVal, sec)
 TimeVal(tv::TimeVal) = tv
 TimeVal(ts::TimeSpec) = convert(TimeVal, ts)
@@ -211,6 +249,7 @@ _time_t(x::Real) = round(_typeof_time_t, x)
 
 Base.float(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 
+# FIXME: extend constructors instead of convert.
 Base.convert(::Type{T}, tv::TimeVal) where {T<:AbstractFloat} =
     convert(T, tv.sec + tv.usec//_time_t(1_000_000))
 
