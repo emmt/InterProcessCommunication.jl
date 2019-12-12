@@ -9,7 +9,7 @@ variables.  Package `IPC.jl` intends to provide such facilities.
 The code source of `IPC.jl` is [here](https://emmt.github.io/IPC.jl).
 
 ```@contents
-Pages = ["semaphores.md", "reference.md"]
+Pages = ["semaphores.md", "sharedmemory.md", "reference.md"]
 ```
 
 ## Index

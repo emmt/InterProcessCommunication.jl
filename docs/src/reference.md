@@ -9,24 +9,65 @@ by the IPC package.  This information is also available from the REPL by typing
 
 ```@docs
 Semaphore
-```
-
-```@docs
 post(::Semaphore)
-```
-
-```@docs
 wait(::Semaphore)
-```
-
-```@docs
 timedwait(::Semaphore, ::Real)
-```
-
-```@docs
 trywait(::Semaphore)
 ```
 
+
+## Shared Memory
+
+```@docs
+SharedMemory
+ShmId
+ShmInfo
+shmid
+shmget
+shmat
+shmdt
+shmrm
+shmctl
+shmcfg
+shminfo
+shminfo!
+```
+
+## Signals
+
+```@docs
+SigSet
+SigAction
+SigInfo
+sigaction
+sigaction!
+sigpending
+sigpending!
+sigprocmask
+sigprocmask!
+sigqueue
+sigsuspend
+sigwait
+sigwait!
+```
+
+## Wrapped arrays
+
+```@docs
+WrappedArray
+```
+
+## Utilities
+
+```@docs
+TimeSpec
+TimeVal
+clock_getres
+clock_gettime
+clock_settime
+gettimeofday
+nanosleep
+```
 
 ## Exceptions
 

@@ -3,6 +3,7 @@ SOURCES = \
     make.jl \
     src/index.md \
     src/reference.md \
+    src/sharedmemory.md \
     src/semaphores.md
 
 default: build/index.html
