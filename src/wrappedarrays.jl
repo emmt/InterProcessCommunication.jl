@@ -158,44 +158,50 @@ end
 
 # FIXME: extend Base.view?
 
-for f in (:length, :sizeof, :size, :eachindex, :strides,
-          :elsize, :eltype, :ndims)
-    @eval Base.$f(obj::WrappedArray) = Base.$f(obj.arr)
-end
+@inline Base.parent(obj::WrappedArray) = obj.arr
 
-Base.size(obj::WrappedArray, d::Number) = size(obj.arr, d)
-
-Base.getindex(obj::WrappedArray, i) = getindex(obj.arr, i)
-
-Base.getindex(obj::WrappedArray, i, inds...) = getindex(obj.arr, i, inds...)
-
-Base.setindex!(obj::WrappedArray, value, i) = setindex!(obj.arr, value, i)
-
-Base.setindex!(obj::WrappedArray, value, i, inds...) =
-    setindex!(obj.arr, value, i, inds...)
+Base.length(obj::WrappedArray) = length(parent(obj))
+Base.sizeof(obj::WrappedArray) = sizeof(parent(obj))
+Base.size(obj::WrappedArray) = size(parent(obj))
+Base.size(obj::WrappedArray, d::Integer) = size(parent(obj), d)
+Base.axes(obj::WrappedArray) = axes(parent(obj))
+Base.axes(obj::WrappedArray, d::Integer) = axes(parent(obj), d)
+@inline Base.axes1(obj::WrappedArray) = Base.axes1(parent(obj))
+Base.strides(obj::WrappedArray) = strides(parent(obj))
+Base.stride(obj::WrappedArray, d::Integer) = stride(parent(obj), d)
+Base.elsize(::Type{WrappedArray{T,N,M}}) where {T,N,M} = elsize(Array{T,N})
 
 Base.IndexStyle(::Type{<:WrappedArray}) = Base.IndexLinear()
 
-Base.stride(obj::WrappedArray, d::Integer) = stride(obj.arr, d)
+@inline @propagate_inbounds Base.getindex(obj::WrappedArray, i::Int) =
+    (@boundscheck checkbounds(obj, i);
+     @inbounds getindex(parent(obj), i))
 
-Base.copy(obj::WrappedArray) = copy(obj.arr)
+@inline @propagate_inbounds Base.setindex!(obj::WrappedArray, x, i::Int) =
+    (@boundscheck checkbounds(obj, i);
+     @inbounds setindex!(parent(obj), x, i))
+
+@inline Base.checkbounds(::Type{Bool}, obj::WrappedArray, i::Int) =
+    (i % UInt) - 1 < length(obj)
+
+Base.copy(obj::WrappedArray) = copy(parent(obj))
 
 Base.copyto!(dest::WrappedArray, src::AbstractArray) =
     (copyto!(dest.arr, src); dest)
 
 Base.reinterpret(::Type{T}, obj::WrappedArray) where {T} =
-    reinterpret(T, obj.arr)
+    reinterpret(T, parent(obj))
 
 Base.reshape(obj::WrappedArray, dims::Tuple{Vararg{Int}}) =
-    reshape(obj.arr, dims)
+    reshape(parent(obj), dims)
 
 # Extend `Base.unsafe_convert` for `ccall`.  Note that this also make `pointer`
 # applicable and that the 2 following definitions are needed to avoid
 # ambiguities and cover all cases.
 unsafe_convert(::Type{Ptr{T}}, obj::WrappedArray{T}) where {T} =
-    unsafe_convert(Ptr{T}, obj.arr)
+    unsafe_convert(Ptr{T}, parent(obj))
 unsafe_convert(::Type{Ptr{S}}, obj::WrappedArray{T}) where {S,T} =
-    unsafe_convert(Ptr{S}, obj.arr)
+    unsafe_convert(Ptr{S}, parent(obj))
 
 # Make a wrapped array iterable:
 @static if isdefined(Base, :iterate) # VERSION ≥ v"0.7-alpha"

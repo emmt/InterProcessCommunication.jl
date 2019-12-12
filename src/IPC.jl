@@ -11,11 +11,6 @@
 
 module IPC
 
-using Printf
-
-import Base: convert, unsafe_convert,
-    lock, unlock, trylock, timedwait, wait, broadcast
-
 export
     CLOCK_MONOTONIC,
     CLOCK_REALTIME,
@@ -62,6 +57,13 @@ export
     sigwait!,
     sigwait,
     trywait
+
+using Printf
+
+using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
+
+import Base: convert, unsafe_convert,
+    lock, unlock, trylock, timedwait, wait, broadcast
 
 const PARANOID = true
 
