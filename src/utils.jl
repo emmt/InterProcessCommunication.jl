@@ -256,28 +256,78 @@ function _fixtime(ip::_typeof_time_t, fp::_typeof_time_t, mlt::_typeof_time_t)
     return (ip, fp)
 end
 
+# FIXME: unused
 syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
     string(msg," [",Libc.strerror(code),"]")
 
-# The error code is automatically provided for `SystemError`.
-throw_system_error(msg::AbstractString) =
-    throw_system_error(msg, Libc.errno())
-throw_system_error(msg::AbstractString, code::Integer) =
-    throw(SystemError(msg, code))
+"""
+```julia
+error_message(args...)
+```
 
-throw_argument_error(msg::AbstractString) =
-    throw(ArgumentError(msg))
+yields a message string built from `args...`.  This string is meant to be used
+as an error message.  The only difference between `string(args...)` and
+`error_message(args...)` is that the latter is not inlined if the result has to
+be dynamically created.  This is to avoid the caller function not being inlined
+because the formatting of the error message involves too many operations.
 
-makedims(dims::NTuple{N,Int}) where {N} = dims
-makedims(dims::NTuple{N,Integer}) where {N} =
-    ntuple(i -> Int(dims[i]), N)
-makedims(dims::AbstractVector{<:Integer}) =
+See also  [`throw_argument_error`](@ref), [`throw_error_exception`](@ref).
+
+"""
+error_message(mesg::String) = mesg
+@noinline error_message(args...) = string(args...)
+
+"""
+```julia
+throw_argument_error(args...)
+```
+
+throws an `ArgumentError` exception with message built from `args...`.
+
+See also [`error_message`](@ref), [`throw_error_exception`](@ref),
+[`throw_system_error`](@ref).
+
+"""
+throw_argument_error(args...) = throw_argument_error(error_message(args...))
+
+"""
+```julia
+throw_error_exception(args...)
+```
+
+throws an `ErrorException` with message built from `args...`.
+
+See also [`error_message`](@ref), [`throw_argument_error`](@ref),
+[`throw_system_error`](@ref).
+
+"""
+throw_error_exception(args...) = throw_error_exception(error_message(args...))
+
+"""
+```julia
+throw_system_error(mesg, errno=Libc.errno())
+```
+
+throws an `SystemError` exception corresponding to error code number `errno`.
+If `errno` is not specified the current value of the global `errno` variable in
+the C library is used.
+
+See also [`throw_argument_error`](@ref), [`throw_error_exception`](@ref).
+
+"""
+throw_system_error(mesg::AbstractString, errno::Integer = Libc.errno()) =
+    throw(SystemError(mesg, errno))
+
+makedims(dims::Tuple{Vararg{Int}}) = dims
+makedims(dims::Tuple{Vararg{Integer}}) = map(Int, dims)
+makedims(dims::AbstractVector{<:Integer}) = # FIXME: bad idea!
     ntuple(i -> Int(dims[i]), length(dims))
 
-function checkdims(dims::NTuple{N,<:Integer}) where {N}
+function checkdims(dims::NTuple{N,Integer}) where {N}
     number = one(Int)
     for i in 1:N
-        dims[i] ≥ 1 || error("invalid dimension (dims[$i] = $(dims[i]))")
+        dims[i] ≥ 1 || throw_error_exception("invalid dimension (dims[", i,
+                                             "] = ", dims[i], ")")
         number *= convert(Int, dims[i])
     end
     return number
@@ -302,13 +352,13 @@ See also: [`pointer`](@ref), [`sizeof`](@ref).
 """
 function get_memory_parameters(mem)::Tuple{Ptr{Cvoid},Int}
     siz = sizeof(mem)
-    isa(siz, Integer) ||
-        throw_argument_error("illegal type for `sizeof(mem) -> $(typeof(siz))`")
-    siz ≥ 0 ||
-        throw_argument_error("invalid value for `sizeof(mem) -> $siz`")
+    isa(siz, Integer) || throw_argument_error("illegal type `", typeof(siz),
+                                              "` for `sizeof(mem)`")
+    siz ≥ 0 || throw_argument_error("invalid value `", siz,
+                                    "` for `sizeof(mem)`")
     ptr = pointer(mem)
-    isa(ptr, Ptr) ||
-        throw_argument_error("illegal type for `pointer(mem) -> $(typeof(ptr))`")
+    isa(ptr, Ptr) || throw_argument_error("illegal type `", typeof(ptr),
+                                          "` for `pointer(mem)`")
     return (convert(Ptr{Cvoid}, ptr), convert(Int, siz))
 end
 

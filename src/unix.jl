@@ -212,7 +212,7 @@ function Base.open(::Type{FileDescriptor}, path::AbstractString,
         flags0 = O_WRONLY
         flags1 = O_CREAT|O_APPEND;
     else
-        error("unknown access mode \"$access\"")
+        throw_argument_error("unknown access mode \"", access, "\"")
     end
     for i in 2:len
         c = access[i]

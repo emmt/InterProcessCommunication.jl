@@ -75,7 +75,7 @@ WrappedArray(id; readonly=false)
 
 """
 function WrappedArray(mem::M, ::Type{T} = UInt8;
-                      offset::Integer = 0)::WrappedArray{T,1,M} where {M,T}
+                      offset::Integer = 0) where {M,T}
     ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     siz ≥ sizeof(T) ||
         throw_argument_error("insufficient memory for at least one element")
@@ -86,8 +86,8 @@ end
 WrappedArray(mem::M, ::Type{T}, dims::Integer...; kwds...) where {M,T} =
     WrappedArray(mem, T, dims; kwds...)
 
-function WrappedArray(mem::M, ::Type{T}, dims::NTuple{N,<:Integer};
-                      offset::Integer = 0)::WrappedArray{T,N,M} where {T,N,M}
+function WrappedArray(mem::M, ::Type{T}, dims::NTuple{N,Integer};
+                      offset::Integer = 0) where {T,N,M}
     ptr, siz = _check_wrapped_array_arguments(mem, T, offset)
     number = checkdims(dims)
     siz ≥ sizeof(T)*number ||
@@ -98,19 +98,19 @@ end
 function WrappedArray(mem, dec::Function)
     T, dims, offset = dec(mem)
     isa(T, DataType) || error("`dec(mem)[1]` must be a data type")
-    isa(dims, Tuple{Vararg{<:Integer}}) ||
+    isa(dims, Tuple{Vararg{Integer}}) ||
         error("`dec(mem)[2]` must be a tuple of dimensions")
     isa(offset, Integer) || error("`dec(mem)[3]` must be an integer")
     return WrappedArray(mem, T, dims; offset = offset)
 end
 
 function WrappedArray(id::Union{AbstractString,ShmId,Key},
-                      ::Type{T}, dims::Vararg{<:Integer,N}; kwds...) where {T,N}
+                      ::Type{T}, dims::Vararg{Integer,N}; kwds...) where {T,N}
     return WrappedArray(id, T, convert(NTuple{N,Int}, dims); kwds...)
 end
 
 function WrappedArray(id::Union{AbstractString,ShmId,Key},
-                      ::Type{T}, dims::NTuple{N,<:Integer}; kwds...) where {T,N}
+                      ::Type{T}, dims::NTuple{N,Integer}; kwds...) where {T,N}
     return WrappedArray(id, T, convert(NTuple{N,Int}, dims); kwds...)
 end
 
@@ -134,12 +134,13 @@ end
 function _check_wrapped_array_arguments(mem::M, ::Type{T},
                                         offset::Integer) where {M,T}
     offset ≥ 0 || throw_argument_error("offset must be nonnegative")
-    isbitstype(T) || throw_argument_error("illegal element type ($T)")
+    isbitstype(T) || throw_argument_error("illegal element type (", T, ")")
     ptr, len = get_memory_parameters(mem)
     align = Base.datatype_alignment(T)
     addr = ptr + offset
     rem(convert(Int, addr), align) == 0 ||
-        throw_argument_error("base address must be a multiple of $align bytes")
+        throw_argument_error("base address must be a multiple of ",
+                             align, " bytes")
     return (convert(Ptr{T}, addr),
             convert(Int, len) - convert(Int, offset))
 end
@@ -276,8 +277,9 @@ memory provided by object `mem`.
 
 """
 function WrappedArrayHeader(::Type{T}, N::Int) where {T}
-    N ≥ 1 || throw_argument_error("illegal number of dimensions ($N)")
-    haskey(_WA_IDENTS, T) || throw_argument_error("unsupported data type ($T)")
+    N ≥ 1 || throw_argument_error("illegal number of dimensions (", N, ")")
+    haskey(_WA_IDENTS, T) || throw_argument_error("unsupported data type (",
+                                                  T, ")")
     off = _wrapped_array_header_size(N)
     return WrappedArrayHeader(_WA_MAGIC, _WA_IDENTS[T], N, off)
 end
@@ -320,20 +322,23 @@ function Base.read(mem, ::Type{WrappedArrayHeader})
         throw_argument_error("insufficient size of memory block for header")
     hdr = unsafe_load(convert(Ptr{WrappedArrayHeader}, ptr))
     hdr.magic == _WA_MAGIC ||
-        error("invalid magic number (0x$(string(hdr.magic, base=16)))")
+        throw_error_exception("invalid magic number (0x",
+                              string(hdr.magic, base=16), ")")
     etype = Int(hdr.etype)
     1 ≤ etype ≤ length(_WA_ETYPES) ||
-        error("invalid element type identifier ($etype)")
+        throw_error_exception("invalid element type identifier (", etype, ")")
     ndims = Int(hdr.ndims)
-    1 ≤ ndims || error("invalid number of dimensions ($ndims)")
+    1 ≤ ndims ||
+        throw_error_exception("invalid number of dimensions (", ndims, ")")
     off = Int(hdr.offset)
     off == _wrapped_array_header_size(ndims) ||
-        error("invalid offset ($off)")
+        throw_error_exception("invalid offset (", off, ")")
     addr = convert(Ptr{Int64}, ptr + sizeof(WrappedArrayHeader))
     dims = ntuple(i -> convert(Int, unsafe_load(addr, i)), ndims)
     num = checkdims(dims)
     T = _WA_ETYPES[etype]
     siz ≥ off + sizeof(T)*num ||
-        error("insufficient size of memory block ($(Int(siz)) < $(Int(off + sizeof(T)*num)))")
+        throw_error_exception("insufficient size of memory block (", Int(siz),
+                              " < ", Int(off + sizeof(T)*num), ")")
     return T, dims, off
 end

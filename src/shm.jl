@@ -74,7 +74,7 @@ function SharedMemory(key::Key, len::Integer;
                       volatile::Bool = true)::SharedMemory{ShmId}
     # Create a new System V shared memory segment with given size and, at
     # least, read and write access for the caller.
-    len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
+    len ≥ 1 || throw_argument_error("bad number of bytes (", len, ")")
     flags = maskmode(perms) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
     id = _shmget(key.value, len, flags)
     if id < 0
@@ -136,7 +136,7 @@ function SharedMemory(name::AbstractString,
     # Create a new POSIX shared memory object?
     create = ((flags & O_CREAT) != 0)
     if create
-        len ≥ 1 || throw_argument_error("bad number of bytes ($len)")
+        len ≥ 1 || throw_argument_error("bad number of bytes (", len, ")")
     end
 
     # Open shared memory and set or get its size.
