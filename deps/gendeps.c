@@ -276,9 +276,15 @@ int main(int argc, char* argv[])
   DEF_CONST(CLOCK_REALTIME, "  = convert(_typeof_clockid_t, %d)");
   DEF_CONST(CLOCK_MONOTONIC, " = convert(_typeof_clockid_t, %d)");
 
-  PUTS("\n# Sizes of some standard C types:");
-  DEF_SIZEOF_TYPE("pthread_mutex_t ", pthread_mutex_t);
-  DEF_SIZEOF_TYPE("pthread_cond_t  ", pthread_cond_t);
+  PUTS("\n# Sizes and constants for POSIX thread functions:");
+  DEF_SIZEOF_TYPE("pthread_mutex_t      ", pthread_mutex_t);
+  DEF_SIZEOF_TYPE("pthread_mutexattr_t  ", pthread_mutexattr_t);
+  DEF_SIZEOF_TYPE("pthread_cond_t       ", pthread_cond_t);
+  DEF_SIZEOF_TYPE("pthread_condattr_t   ", pthread_condattr_t);
+  DEF_SIZEOF_TYPE("pthread_rwlock_t     ", pthread_rwlock_t);
+  DEF_SIZEOF_TYPE("pthread_rwlockattr_t ", pthread_rwlockattr_t);
+  DEF_CONST(PTHREAD_PROCESS_SHARED, "  = %d");
+  DEF_CONST(PTHREAD_PROCESS_PRIVATE, " = %d");
 
   PUTS("\n# Definitions for `struct stat`:");
   DEF_SIZEOF_TYPE("struct_stat       ", struct stat);

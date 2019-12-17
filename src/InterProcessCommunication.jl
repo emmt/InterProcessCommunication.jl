@@ -62,6 +62,7 @@ export
     sigsuspend,
     sigwait!,
     sigwait,
+    timedlock,
     trywait
 
 using Printf
@@ -71,7 +72,7 @@ import Dates: now
 using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 
 import Base: convert, unsafe_convert,
-    lock, unlock, trylock, timedwait, wait, broadcast
+    islocked, lock, unlock, trylock, timedwait, wait, broadcast
 
 # The following is an exported shortcut to the package.
 const IPC = InterProcessCommunication

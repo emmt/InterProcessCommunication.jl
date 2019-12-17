@@ -7,9 +7,9 @@
 Julia has already many methods for inter-process communication (IPC): sockets,
 semaphores, memory mapped files, etc.  You may however want to have Julia
 interacts with other processes or threads by means of BSD (System V) IPC or
-POSIX shared memory, semaphores, message queues or mutexes and condition
-variables.  Package `InterProcessCommunication.jl` (*IPC* for short) intends to
-provide such facilities.
+POSIX shared memory, semaphores, message queues or mutexes, condition variables
+and read/write locks.  Package `InterProcessCommunication.jl` (*IPC* for short)
+intends to provide such facilities.
 
 The `InterProcessCommunication` package provides:
 
@@ -24,6 +24,10 @@ The `InterProcessCommunication` package provides:
 * Management of **signals** including so called real-time signals.
 
 * Array-like objects stored in shared memory.
+
+* Access to POSIX mutexes, condition variables and read/write locks.  These
+  objects can optionally be stored in shared memory and shared between
+  processes.
 
 
 ## Installation
