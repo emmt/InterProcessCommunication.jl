@@ -84,7 +84,7 @@ include("utils.jl")
 include("shm.jl")
 include("semaphores.jl")
 include("signals.jl")
-include("mutex.jl")
+include("locks.jl")
 
 @deprecate IPC_NEW IPC.PRIVATE
 

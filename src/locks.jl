@@ -1,7 +1,7 @@
 #
-# mutex.jl --
+# locks.jl --
 #
-# POSIX mutexes and condition variables for Julia.
+# Mutexes, condition variables and read/write locks for Julia.
 #
 #------------------------------------------------------------------------------
 #
