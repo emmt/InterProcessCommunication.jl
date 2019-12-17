@@ -237,13 +237,23 @@ TimeSpec(sec)
 yields an instance of `TimeSpec` for a, possibly fractional, number of seconds
 `sec` since the Epoch.  Argument can also be an instance of [`TimeVal`](@ref).
 
+Call `now(TimeSpec)` to get the current time as an instance of `TimeSpec`.
+
+Addition and subtraction involving and instance of `TimeSpec` yield a
+`TimeSpec` result.  For instance:
+
+```julia
+now(TimeSpec) + 3.4
+```
+
+yields a `TimeSpec` instance with the current time plus `3.4` seconds.
+
 """
 TimeSpec(ts::TimeSpec) = ts
 TimeSpec(secs::Integer) = TimeSpec(secs, 0)
 TimeSpec(secs::Real) = TimeSpec(_splittime(secs, _time_t(1_000_000_000))...)
 TimeSpec(tv::Union{TimeVal,Libc.TimeVal}) =
-    TimeSpec(_fixtime(tv.sec, tv.usec*_time_t(1_000),
-                      _time_t(1_000_000_000))...)
+    _fixtime(TimeSpec, tv.sec, tv.usec*_time_t(1_000))
 
 """
 
@@ -261,14 +271,23 @@ TimeVal(sec)
 yields an instance of `TimeVal` with a, possibly fractional, number of seconds
 `sec` since the Epoch.  Argument can also be an instance of [`TimeSpec`](@ref).
 
+Call `now(TimeVal)` to get the current time as an instance of `TimeVal`.
+
+Addition and subtraction involving and instance of `TimeVal` yield a
+`TimeVal` result.  For instance:
+
+```julia
+now(TimeVal) + 3.4
+```
+
+yields a `TimeVal` instance with the current time plus `3.4` seconds.
+
 """
 TimeVal(tv::TimeVal) = tv
 TimeVal(tv::Libc.TimeVal) = TimeVal(tv.sec, tv.usec)
 TimeVal(secs::Integer) = TimeVal(secs, 0)
 TimeVal(secs::Real) = TimeVal(_splittime(secs, _time_t(1_000_000))...)
-TimeVal(ts::TimeSpec) =
-    TimeVal(_fixtime(ts.sec, _time_t(ts.nsec//_time_t(1_000)),
-                     _time_t(1_000_000))...)
+TimeVal(ts::TimeSpec) = _fixtime(TimeVal, ts.sec, round(_time_t, 1e-3*ts.nsec))
 
 _time_t(x::Integer) = convert(_typeof_time_t, x)
 _time_t(x::Real) = round(_typeof_time_t, x)
@@ -285,10 +304,10 @@ Base.convert(::Type{TimeSpec}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
 Base.convert(::Type{TimeVal}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
     TimeVal(arg)
 
-function _splittime(sec::AbstractFloat, mlt::_typeof_time_t)
-    s = floor(sec)
+function _splittime(secs::Real, mlt::_typeof_time_t)
+    s = floor(secs)
     ip = _time_t(s)
-    fp = _time_t((sec - s)*mlt)
+    fp = _time_t((secs - s)*mlt)
     if fp ≥ mlt
         fp -= mlt
         ip += one(_typeof_time_t)
@@ -305,6 +324,33 @@ function _fixtime(ip::_typeof_time_t, fp::_typeof_time_t, mlt::_typeof_time_t)
     end
     return (ip, fp)
 end
+
+_fixtime(::Type{TimeSpec}, ip::_typeof_time_t, fp::_typeof_time_t) =
+    TimeSpec(_fixtime(ip, fp, _time_t(1_000_000_000))...)
+
+_fixtime(::Type{TimeVal}, ip::_typeof_time_t, fp::_typeof_time_t) =
+    TimeVal(_fixtime(ip, fp, _time_t(1_000_000))...)
+
+#
+# Extend addition and subtraction for time structures.
+#
+Base.:(+)(a::TimeSpec, b::TimeSpec) =
+    _fixtime(TimeSpec, a.sec + b.sec, a.nsec + b.nsec)
+Base.:(-)(a::TimeSpec, b::TimeSpec) =
+    _fixtime(TimeSpec, a.sec - b.sec, a.nsec - b.nsec)
+Base.:(+)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a + TimeSpec(b)
+Base.:(-)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a - TimeSpec(b)
+Base.:(+)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) + b
+Base.:(-)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) - b
+
+Base.:(+)(a::TimeVal, b::TimeVal) =
+    _fixtime(TimeVal, a.sec + b.sec, a.usec + b.usec)
+Base.:(-)(a::TimeVal, b::TimeVal) =
+    _fixtime(TimeVal, a.sec - b.sec, a.usec - b.usec)
+Base.:(+)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a + TimeVal(b)
+Base.:(-)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a - TimeVal(b)
+Base.:(+)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) + b
+Base.:(-)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) - b
 
 # FIXME: unused
 syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
