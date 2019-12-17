@@ -352,10 +352,6 @@ Base.:(-)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a - TimeVal(b)
 Base.:(+)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) + b
 Base.:(-)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) - b
 
-# FIXME: unused
-syserrmsg(msg::AbstractString, code::Integer=Libc.errno()) =
-    string(msg," [",Libc.strerror(code),"]")
-
 """
 ```julia
 error_message(args...)
