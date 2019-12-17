@@ -40,6 +40,7 @@ export
     clock_settime,
     gettimeofday,
     nanosleep,
+    now,
     post,
     shmat,
     shmcfg,
@@ -64,6 +65,8 @@ export
     trywait
 
 using Printf
+using Dates
+import Dates: now
 
 using Base: elsize, tail, OneTo, throw_boundserror, @propagate_inbounds
 

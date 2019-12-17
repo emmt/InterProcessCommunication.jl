@@ -86,6 +86,21 @@ end
 """
 
 ```julia
+now(T)
+```
+
+yields the current time since the Epoch as an instance of type `T`, which can
+be [`TimeVal`](@ref) or [`TimeSpec`](@ref).
+
+See also: [`gettimeofday`](@ref),  [`clock_gettime`](@ref).
+
+"""
+now(::Type{TimeVal}) = gettimeofday()
+now(::Type{TimeSpec}) = clock_gettime(CLOCK_REALTIME)
+
+"""
+
+```julia
 nanosleep(t) -> rem
 ```
 
@@ -100,7 +115,7 @@ See also [`gettimeofday`](@ref), [`IPC.TimeSpec`](@ref) and
 [`IPC.TimeVal`](@ref).
 
 """
-nanosleep(t::Union{Real,TimeVal}) = nanosleep(TimeSpec(t))
+nanosleep(t::Union{Real,TimeVal,Libc.TimeVal}) = nanosleep(TimeSpec(t))
 
 function nanosleep(ts::TimeSpec)
     rem = Ref(TimeSpec(0,0))
@@ -223,9 +238,12 @@ yields an instance of `TimeSpec` for a, possibly fractional, number of seconds
 `sec` since the Epoch.  Argument can also be an instance of [`TimeVal`](@ref).
 
 """
-TimeSpec(sec::Real) = convert(TimeSpec, sec)
 TimeSpec(ts::TimeSpec) = ts
-TimeSpec(tv::TimeVal) = convert(TimeSpec, tv)
+TimeSpec(secs::Integer) = TimeSpec(secs, 0)
+TimeSpec(secs::Real) = TimeSpec(_splittime(secs, _time_t(1_000_000_000))...)
+TimeSpec(tv::Union{TimeVal,Libc.TimeVal}) =
+    TimeSpec(_fixtime(tv.sec, tv.usec*_time_t(1_000),
+                      _time_t(1_000_000_000))...)
 
 """
 
@@ -244,27 +262,28 @@ yields an instance of `TimeVal` with a, possibly fractional, number of seconds
 `sec` since the Epoch.  Argument can also be an instance of [`TimeSpec`](@ref).
 
 """
-TimeVal(sec::Real) = convert(TimeVal, sec)
 TimeVal(tv::TimeVal) = tv
-TimeVal(ts::TimeSpec) = convert(TimeVal, ts)
+TimeVal(tv::Libc.TimeVal) = TimeVal(tv.sec, tv.usec)
+TimeVal(secs::Integer) = TimeVal(secs, 0)
+TimeVal(secs::Real) = TimeVal(_splittime(secs, _time_t(1_000_000))...)
+TimeVal(ts::TimeSpec) =
+    TimeVal(_fixtime(ts.sec, _time_t(ts.nsec//_time_t(1_000)),
+                     _time_t(1_000_000))...)
 
 _time_t(x::Integer) = convert(_typeof_time_t, x)
 _time_t(x::Real) = round(_typeof_time_t, x)
 
+Base.Float32(t::Union{TimeVal,TimeSpec}) = convert(Float32, t)
+Base.Float64(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 Base.float(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
-
-# FIXME: extend constructors instead of convert.
 Base.convert(::Type{T}, tv::TimeVal) where {T<:AbstractFloat} =
-    convert(T, tv.sec + tv.usec//_time_t(1_000_000))
-
+    T(tv.sec + tv.usec//_time_t(1_000_000))
 Base.convert(::Type{T}, ts::TimeSpec) where {T<:AbstractFloat} =
-    convert(T, ts.sec + ts.nsec//_time_t(1_000_000_000))
-
-Base.convert(::Type{TimeVal}, sec::T) where {T<:AbstractFloat} =
-    TimeVal(_splittime(sec, _time_t(1_000_000))...)
-
-Base.convert(::Type{TimeSpec}, sec::T) where {T<:AbstractFloat} =
-    TimeSpec(_splittime(sec, _time_t(1_000_000_000))...)
+    T(ts.sec + ts.nsec//_time_t(1_000_000_000))
+Base.convert(::Type{TimeSpec}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
+    TimeSpec(arg)
+Base.convert(::Type{TimeVal}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
+    TimeVal(arg)
 
 function _splittime(sec::AbstractFloat, mlt::_typeof_time_t)
     s = floor(sec)
@@ -276,18 +295,6 @@ function _splittime(sec::AbstractFloat, mlt::_typeof_time_t)
     end
     return (ip, fp)
 end
-
-Base.convert(::Type{TimeVal}, sec::Integer) = TimeVal(sec, 0)
-
-Base.convert(::Type{TimeSpec}, sec::Integer) = TimeSpec(sec, 0)
-
-Base.convert(::Type{TimeSpec}, tv::TimeVal) =
-    TimeSpec(_fixtime(tv.sec, tv.usec*_time_t(1_000),
-                      _time_t(1_000_000_000))...)
-
-Base.convert(::Type{TimeVal}, ts::TimeSpec) =
-    TimeVal(_fixtime(ts.sec, _time_t(ts.nsec//_time_t(1_000)),
-                      _time_t(1_000_000))...)
 
 function _fixtime(ip::_typeof_time_t, fp::_typeof_time_t, mlt::_typeof_time_t)
     ip += div(fp, mlt)
