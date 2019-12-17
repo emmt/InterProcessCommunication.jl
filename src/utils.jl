@@ -92,11 +92,26 @@ now(T)
 yields the current time since the Epoch as an instance of type `T`, which can
 be [`TimeVal`](@ref) or [`TimeSpec`](@ref).
 
-See also: [`gettimeofday`](@ref),  [`clock_gettime`](@ref).
+See also: [`gettimeofday`](@ref),  [`time`](@ref),  [`clock_gettime`](@ref).
 
 """
 now(::Type{TimeVal}) = gettimeofday()
 now(::Type{TimeSpec}) = clock_gettime(CLOCK_REALTIME)
+
+"""
+
+```julia
+time(T)
+```
+
+yields the current time since the Epoch as an instance of type `T`, which can
+be [`TimeVal`](@ref) or [`TimeSpec`](@ref).
+
+See also:  [`now`](@ref)[`gettimeofday`](@ref), [`clock_gettime`](@ref).
+
+"""
+Base.time(::Type{TimeVal}) = gettimeofday()
+Base.time(::Type{TimeSpec}) = clock_gettime(CLOCK_REALTIME)
 
 """
 
@@ -351,6 +366,54 @@ Base.:(+)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a + TimeVal(b)
 Base.:(-)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a - TimeVal(b)
 Base.:(+)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) + b
 Base.:(-)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) - b
+
+#
+# Extend isapprox for time structures.
+#
+Base.isapprox(a::TimeSpec, b::TimeSpec; atol::Real = 5e-9) =
+    abs((a.sec - b.sec) + 1e-9*(a.nsec - b.nsec)) ≤ atol
+Base.isapprox(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}; kwds...) =
+    isapprox(a, TimeSpec(b); kwds...)
+Base.isapprox(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec; kwds...) =
+    isapprox(b, a; kwds...)
+
+Base.isapprox(a::TimeVal, b::TimeVal; atol::Real = 1e-6) =
+    abs((a.sec - b.sec) + 1e-6*(a.usec - b.usec)) ≤ atol
+Base.isapprox(a::TimeVal, b::Union{Real,Libc.TimeVal}; kwds...) =
+    isapprox(a, TimeVal(b); kwds...)
+Base.isapprox(a::Union{Real,Libc.TimeVal}, b::TimeVal; kwds...) =
+    isapprox(b, a; kwds...)
+
+Base.:(==)(a::TimeSpec, b::TimeSpec) = _timediff(a, b) == 0
+Base.:(==)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a == TimeSpec(b)
+Base.:(==)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) == b
+
+Base.:(≤)(a::TimeSpec, b::TimeSpec) = _timediff(a, b) ≤ 0
+Base.:(≤)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a ≤ TimeSpec(b)
+Base.:(≤)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) ≤ b
+
+Base.:(<)(a::TimeSpec, b::TimeSpec) =_timediff(a, b) < 0
+Base.:(<)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a < TimeSpec(b)
+Base.:(<)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) < b
+
+Base.:(==)(a::TimeVal, b::TimeVal) = _timediff(a, b) == 0
+Base.:(==)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a == TimeVal(b)
+Base.:(==)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) == b
+
+Base.:(≤)(a::TimeVal, b::TimeVal) = _timediff(a, b) ≤ 0
+Base.:(≤)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a ≤ TimeVal(b)
+Base.:(≤)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) ≤ b
+
+Base.:(<)(a::TimeVal, b::TimeVal) = _timediff(a, b) < 0
+Base.:(<)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a < TimeVal(b)
+Base.:(<)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) < b
+
+_timediff(a::TimeSpec, b::TimeSpec) =
+    (1_000_000_000*(a.sec - b.sec) + (a.nsec - b.nsec))
+
+_timediff(a::TimeVal, b::TimeVal) =
+    (1_000_000*(a.sec - b.sec) + (a.usec - b.usec))
+
 
 """
 ```julia

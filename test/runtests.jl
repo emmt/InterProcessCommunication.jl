@@ -33,7 +33,23 @@ end
 
 @testset "Time Functions        " begin
     # compile and warmup
-    time()
+    for ts in (time(TimeSpec), now(TimeSpec))
+        @test ts ≈ ts
+        @test (ts != ts) == false
+        @test ts ≤ ts
+        @test ts ≥ ts
+        @test (ts < ts) == false
+        @test (ts > ts) == false
+    end
+    for tv in (time(TimeVal), now(TimeVal))
+        @test tv ≈ tv
+        @test tv == tv
+        @test (tv != tv) == false
+        @test tv ≤ tv
+        @test tv ≥ tv
+        @test (tv < tv) == false
+        @test (tv > tv) == false
+    end
     float(gettimeofday())
     float(clock_gettime(CLOCK_MONOTONIC))
     float(clock_gettime(CLOCK_REALTIME))
@@ -42,6 +58,8 @@ end
 
     # compare times
     ms = 0.001
+    µs = 0.000_001
+    ns = 0.000_000_001
     @test abs(time() - float(gettimeofday())) ≤ 1ms
     @test abs(time() - float(clock_gettime(CLOCK_REALTIME))) ≤ 1ms
     @test float(clock_getres(CLOCK_MONOTONIC)) ≤ 1ms
