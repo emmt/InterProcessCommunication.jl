@@ -226,16 +226,16 @@ See also [`clock_getres`](@ref), [`clock_gettime`](@ref),
 [`IPC.TimeVal`](@ref).
 
 """
-clock_settime(id::Integer, sec::Real) =
-    clock_settime(id, TimeSpec(sec))
+clock_settime(id::Integer, t::Union{Real,TimeVal,Libc.TimeVal}) =
+    clock_settime(id, TimeSpec(t))
 
 clock_settime(id::Integer, ts::TimeSpec) =
-    clock_settime(id, Ref{TimeSpec}(sec))
+    clock_settime(id, Ref(ts))
 
 clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
-    systemerror("clock_settime",
-                ccall(:clock_settime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
-                      id, ts) != SUCCESS)
+    SUCCESS == ccall(:clock_settime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
+                     id, ts) || throw_system_error("clock_settime")
+
 """
 
 `TimeConstraints` is the abstract type inherited by concrete types specifying
@@ -384,6 +384,7 @@ Base.typemax(::Type{TimeVal}) =
 
 Base.Float32(t::Union{TimeVal,TimeSpec}) = convert(Float32, t)
 Base.Float64(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
+Base.BigFloat(t::Union{TimeVal,TimeSpec}) = convert(BigFloat, t)
 Base.float(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 Base.convert(::Type{T}, tv::TimeVal) where {T<:AbstractFloat} =
     T(tv.sec) + T(tv.usec)/T(MICROSECONDS_PER_SECOND)
@@ -492,7 +493,7 @@ See also [`splittime`](@ref).
 """
 function fixtime(::Type{Ti}, ::Type{Tf}, i::Integer, f::Integer,
                  n::Integer) where {Ti<:Integer, Tf<:Integer}
-    fixtime(i, f, n, Nonnegative())
+    fixtime(Ti, Tf, i, f, n, Nonnegative())
 end
 
 # Note that assuming n > 0, then q,r = divrem(f,n) yields q and r that have the
