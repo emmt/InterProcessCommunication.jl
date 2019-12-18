@@ -270,6 +270,10 @@ const MILLISECONDS_PER_SECOND = 1_000
 const MICROSECONDS_PER_SECOND = 1_000_000
 const  NANOSECONDS_PER_SECOND = 1_000_000_000
 
+# Most of the time manipulation methods assume signed fractional time field.
+@assert fieldtype(TimeVal,  :usec) <: Signed
+@assert fieldtype(TimeSpec, :nsec) <: Signed
+
 """
 
 ```julia
@@ -535,8 +539,11 @@ const AnyTime = Union{TimeSpec,TimeVal,Libc.TimeVal}
 const AnyTimeVal = Union{TimeVal,Libc.TimeVal}
 
 #
-# Extend addition and subtraction for time structures.
+# Extend unary minus, addition and subtraction for time structures.
 #
+Base.:(-)(a::T) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, -intpart(a), -fracpart(a))
+
 Base.:(+)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}} =
     fixtime(T, intpart(a) + intpart(b), fracpart(a) + fracpart(b))
 Base.:(-)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}} =

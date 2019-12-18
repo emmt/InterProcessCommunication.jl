@@ -65,6 +65,7 @@ end
     @test Libc.TimeVal(tv) == tv
     @test Libc.TimeVal(TimeSpec(tv)) == tv
     @test tv == Libc.TimeVal(tv.sec, tv.usec)
+    @test 0 - tv === -tv
     @test tv == tv + 0
     @test tv == 0 + tv
     @test tv == tv + h1*r
@@ -96,6 +97,7 @@ end
     @test TimeSpec(sec) === TimeSpec(sec,0)
     @test TimeSpec(sec + nsec*r) === TimeSpec(sec,nsec)
     @test TimeSpec(sec - nsec*r) == TimeSpec(sec,-nsec)
+    @test 0 - ts === -ts
     @test ts == ts + 0
     @test ts == 0 + ts
     @test ts == ts + r*h1
