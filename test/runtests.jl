@@ -53,8 +53,13 @@ end
     end
     h1 = prevfloat(0.5)
     h2 = nextfloat(0.5)
+    sec, usec, nsec = -123, 123456, 123456123
     tv = time(TimeVal)
     r = 1e-6 # resolution = 1 µs
+    @test TimeVal(tv) === tv
+    @test TimeVal(sec) === TimeVal(sec,0)
+    @test TimeVal(sec + usec*r) === TimeVal(sec,usec)
+    @test TimeVal(sec - usec*r) == TimeVal(sec,-usec)
     @test TimeVal(Libc.TimeVal(tv.sec, tv.usec)) === tv
     @test TimeSpec(Libc.TimeVal(tv.sec, tv.usec)) === TimeSpec(tv)
     @test Libc.TimeVal(tv) == tv
@@ -72,15 +77,25 @@ end
     @test float(tv - (tv - h1*r)) == 0
     @test float((tv + h2*r) - tv) == r
     @test float(tv - (tv - h2*r)) == r
-    sec, usec = -123, 123456
+    @test TimeVal(123.456789) == float(TimeVal(123.456789))
+    @test TimeVal(h1*r) == float(TimeVal(0,0))
+    @test TimeVal(h2*r) == float(TimeVal(0,1))
     @test TimeVal(TimeSpec(sec,1_000*usec)) === TimeVal(sec,usec)
     @test TimeVal(TimeSpec(sec,1_000*usec+499)) === TimeVal(sec,usec)
     @test TimeVal(TimeSpec(sec,1_000*usec+500)) === TimeVal(sec,usec+1)
     @test TimeVal(TimeSpec(sec,-1_000*usec)) === TimeVal(sec-1,1_000_000-usec)
     @test TimeVal(TimeSpec(sec,-1_000*usec-499)) === TimeVal(sec-1,1_000_000-usec)
     @test TimeVal(TimeSpec(sec,-1_000*usec-500)) === TimeVal(sec-1,1_000_000-(usec+1))
+    @test typemin(TimeVal) - 1 == typemin(TimeVal) - 1.0 > 0 # check integer wrapping
+    @test typemax(TimeVal) + 1 == typemax(TimeVal) + 1.0 < 0 # check integer wrapping
+    @test typemin(TimeVal) + 1 == typemin(TimeVal) + 1.0 < 0
+    @test typemax(TimeVal) - 1 == typemax(TimeVal) - 1.0 > 0
     ts = time(TimeSpec)
     r = 1e-9 # resolution = 1 ns
+    @test TimeSpec(ts) === ts
+    @test TimeSpec(sec) === TimeSpec(sec,0)
+    @test TimeSpec(sec + nsec*r) === TimeSpec(sec,nsec)
+    @test TimeSpec(sec - nsec*r) == TimeSpec(sec,-nsec)
     @test ts == ts + 0
     @test ts == 0 + ts
     @test ts == ts + r*h1
@@ -93,6 +108,13 @@ end
     @test float(ts - (ts - h1*r)) == 0
     @test float((ts + h2*r) - ts) == r
     @test float(ts - (ts - h2*r)) == r
+    @test TimeSpec(123.456789) == float(TimeSpec(123.456789))
+    @test TimeSpec(h1*r) == float(TimeSpec(0,0))
+    @test TimeSpec(h2*r) == float(TimeSpec(0,1))
+    @test typemin(TimeSpec) - 1 == typemin(TimeSpec) - 1.0  > 0 # check integer wrapping
+    @test typemax(TimeSpec) + 1 == typemax(TimeSpec) + 1.0 < 0 # check integer wrapping
+    @test typemin(TimeSpec) + 1 == typemin(TimeSpec) + 1.0 < 0
+    @test typemax(TimeSpec) - 1 == typemax(TimeSpec) - 1.0 > 0
 
 
     float(gettimeofday())

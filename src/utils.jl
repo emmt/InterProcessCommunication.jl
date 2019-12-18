@@ -568,7 +568,7 @@ Base.:(+)(a::Integer, b::T) where {T<:Union{TimeSpec,TimeVal}} =
     fixtime(T, a + intpart(b), fracpart(b))
 
 Base.:(-)(a::T, b::Integer) where {T<:Union{TimeSpec,TimeVal}} =
-    fixtime(T, intpart(a) - intpart(b), fracpart(a))
+    fixtime(T, intpart(a) - b, fracpart(a))
 Base.:(-)(a::Integer, b::T) where {T<:Union{TimeSpec,TimeVal}} =
     fixtime(T, a - intpart(b), -fracpart(b))
 
