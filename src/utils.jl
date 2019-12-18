@@ -835,8 +835,5 @@ end
 
 Base.sizeof(obj::DynamicMemory) = obj.len
 Base.pointer(obj::DynamicMemory) = obj.ptr
-Base.convert(::Type{Ptr{Cvoid}}, obj::DynamicMemory) = obj.ptr
-Base.convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
-    convert(Ptr{T}, obj.ptr)
 Base.unsafe_convert(::Type{Ptr{T}}, obj::DynamicMemory) where {T} =
-    convert(Ptr{T}, obj.ptr)
+    Ptr{T}(obj.ptr)
