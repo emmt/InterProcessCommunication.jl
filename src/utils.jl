@@ -238,6 +238,40 @@ clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
                       id, ts) != SUCCESS)
 """
 
+`TimeConstraints` is the abstract type inherited by concrete types specifying
+the kind of constraints to apply for the integer and fractional parts of a time
+value.  There are two possibilities: [`Nonnegative`](@ref) if the fractional
+part shall be nonnegative or [`SameSign`](@ref) if the fractional and integer
+parts shall have the same sign.
+
+"""
+abstract type TimeConstraints end
+
+"""
+
+`Nonnegative` is a singleton type derived from [`TimeConstraints`](@ref) and
+used to impose that the fractional part of a time value be nonnegative.  This
+is what is assumed for normalized time values.
+
+"""
+struct Nonnegative <: TimeConstraints end
+
+"""
+
+`SameSign` is a singleton type derived from [`TimeConstraints`](@ref) and used
+to impose that the fractional and integer parts of a time value have the same
+sign.
+
+"""
+struct SameSign <: TimeConstraints end
+
+const Floats = Union{AbstractFloat,AbstractIrrational,Rational}
+const MILLISECONDS_PER_SECOND = 1_000
+const MICROSECONDS_PER_SECOND = 1_000_000
+const  NANOSECONDS_PER_SECOND = 1_000_000_000
+
+"""
+
 ```julia
 TimeSpec(sec, nsec)
 ```
@@ -263,12 +297,21 @@ now(TimeSpec) + 3.4
 
 yields a `TimeSpec` instance with the current time plus `3.4` seconds.
 
+```julia
+typemin(TimeSpec)
+typemax(TimeSpec)
+```
+
+respectively yield the minimum and maximum normalized time values for an
+instance of `TimeSpec`.
+
 """
 TimeSpec(ts::TimeSpec) = ts
 TimeSpec(secs::Integer) = TimeSpec(secs, 0)
-TimeSpec(secs::Real) = TimeSpec(_splittime(secs, _time_t(1_000_000_000))...)
-TimeSpec(tv::Union{TimeVal,Libc.TimeVal}) =
-    _fixtime(TimeSpec, tv.sec, tv.usec*_time_t(1_000))
+TimeSpec(secs::Floats) = TimeSpec(splittime(_typeof_timespec_sec,
+                                            _typeof_timespec_nsec, secs,
+                                            NANOSECONDS_PER_SECOND)...)
+TimeSpec(tv::Union{TimeVal,Libc.TimeVal}) = TimeSpec(tv.sec, tv.usec*1_000)
 
 """
 
@@ -297,123 +340,332 @@ now(TimeVal) + 3.4
 
 yields a `TimeVal` instance with the current time plus `3.4` seconds.
 
+```julia
+typemin(TimeVal)
+typemax(TimeVal)
+```
+
+respectively yield the minimum and maximum normalized time values for an
+instance of `TimeVal`.
+
 """
 TimeVal(tv::TimeVal) = tv
 TimeVal(tv::Libc.TimeVal) = TimeVal(tv.sec, tv.usec)
 TimeVal(secs::Integer) = TimeVal(secs, 0)
-TimeVal(secs::Real) = TimeVal(_splittime(secs, _time_t(1_000_000))...)
-TimeVal(ts::TimeSpec) = _fixtime(TimeVal, ts.sec, round(_time_t, 1e-3*ts.nsec))
+TimeVal(secs::Floats) = TimeVal(splittime(_typeof_timeval_sec,
+                                          _typeof_timeval_usec, secs,
+                                          MICROSECONDS_PER_SECOND)...)
+TimeVal(ts::TimeSpec) = begin
+    usec, r = divrem(ts.nsec, 1_000)
+    if r ≥ 500
+        usec += one(usec)
+    elseif r ≤ -500
+        usec -= one(usec)
+    end
+    fixtime(TimeVal, ts.sec, usec)
+end
 
-_time_t(x::Integer) = convert(_typeof_time_t, x)
-_time_t(x::Real) = round(_typeof_time_t, x)
+Libc.TimeVal(ts::TimeSpec) = Libc.TimeVal(TimeVal(ts))
+Libc.TimeVal(tv::TimeVal) = Libc.TimeVal(tv.sec, tv.usec)
+
+Base.typemin(::Type{TimeSpec}) =
+    TimeSpec(typemin(_typeof_timespec_sec), 0)
+Base.typemax(::Type{TimeSpec}) =
+    TimeSpec(typemax(_typeof_timespec_sec), NANOSECONDS_PER_SECOND - 1)
+
+Base.typemin(::Type{TimeVal}) =
+    TimeVal(typemin(_typeof_timeval_sec), 0)
+Base.typemax(::Type{TimeVal}) =
+    TimeVal(typemax(_typeof_timeval_sec), MICROSECONDS_PER_SECOND - 1)
 
 Base.Float32(t::Union{TimeVal,TimeSpec}) = convert(Float32, t)
 Base.Float64(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 Base.float(t::Union{TimeVal,TimeSpec}) = convert(Float64, t)
 Base.convert(::Type{T}, tv::TimeVal) where {T<:AbstractFloat} =
-    T(tv.sec + tv.usec//_time_t(1_000_000))
+    T(tv.sec) + T(tv.usec)/T(MICROSECONDS_PER_SECOND)
 Base.convert(::Type{T}, ts::TimeSpec) where {T<:AbstractFloat} =
-    T(ts.sec + ts.nsec//_time_t(1_000_000_000))
+    T(ts.sec) + T(ts.nsec)/T(NANOSECONDS_PER_SECOND)
 Base.convert(::Type{TimeSpec}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
     TimeSpec(arg)
 Base.convert(::Type{TimeVal}, arg::Union{Real,TimeSpec,TimeVal,Libc.TimeVal}) =
     TimeVal(arg)
 
-function _splittime(secs::Real, mlt::_typeof_time_t)
+"""
+
+```julia
+splittime(Ti, Tf, s, n, r=Nonnegative()) -> (ip::Ti, fp::Tf)
+```
+
+yields two integers, `ip` and `fp` with `abs(fp) ∈ [0,n-1[`, such that `ip +
+fp/n ≈ s` (with a precision better than `1/n`) and imposing the constraints set
+by `r`:
+
+* if `r` is `Nonnegative()`, then `fp ≥ 0`;
+
+* if `r` is `SameSign()`, then `ip` and `fp` have the same sign.
+
+The multiplier `n` must be strictly positive.  An `InexactError` is thrown if
+the value of `s` cannot be converted (e.g. it is a NaN or its magnitude is too
+large).
+
+See also [`fixtime`](@ref).
+
+"""
+function splittime(::Type{Ti}, ::Type{Tf}, secs::Floats,
+                   n::Integer) where {Ti<:Integer, Tf<:Integer}
+    splittime(Ti, Tf, secs, n, Nonnegative())
+end
+
+function splittime(::Type{Ti}, ::Type{Tf}, secs::Floats,
+                   n::Integer, ::Nonnegative) where {Ti<:Integer, Tf<:Integer}
     s = floor(secs)
-    ip = _time_t(s)
-    fp = _time_t((secs - s)*mlt)
-    if fp ≥ mlt
-        fp -= mlt
-        ip += one(_typeof_time_t)
+    ip = trunc(Ti, s)
+    fp = round(Tf, (secs - s)*n)
+    if fp ≥ n
+        ip += Ti(1)
+        fp -= Tf(n)
     end
     return (ip, fp)
 end
 
-function _fixtime(ip::_typeof_time_t, fp::_typeof_time_t, mlt::_typeof_time_t)
-    ip += div(fp, mlt)
-    fp = rem(fp, mlt)
-    if ip < 0
-        ip += mtl
-        fp -= one(_typeof_time_t)
+function splittime(::Type{Ti}, ::Type{Tf}, secs::Floats,
+                   n::Integer, ::SameSign) where {Ti<:Integer, Tf<:Integer}
+    @assert isfinite(secs)
+    if secs < 0
+        s = -floor(-secs)
+        ip = trunc(Ti, s)
+        fp = round(Tf, (secs - s)*n)
+        if fp ≤ -n
+            ip -= Ti(1)
+            fp += Tf(n)
+        end
+    else
+        s = floor(secs)
+        ip = trunc(Ti, s)
+        fp = round(Tf, (secs - s)*n)
+        if fp ≥ n
+            ip += Ti(1)
+            fp -= Tf(n)
+        end
     end
     return (ip, fp)
 end
 
-_fixtime(::Type{TimeSpec}, ip::_typeof_time_t, fp::_typeof_time_t) =
-    TimeSpec(_fixtime(ip, fp, _time_t(1_000_000_000))...)
+"""
 
-_fixtime(::Type{TimeVal}, ip::_typeof_time_t, fp::_typeof_time_t) =
-    TimeVal(_fixtime(ip, fp, _time_t(1_000_000))...)
+```julia
+fixtime(Ti, Tf, i, f, n, r = Nonnegative()) -> (ip::Ti, fp::Tf)
+```
+
+yields two integers, `ip` and `fp` with `abs(fp) ∈ [0,n-1[`, such that
+`ip + fp/n == i + f/n` (in arbitrary precision) and imposing the constraints
+set by `r`:
+
+* if `r` is `Nonnegative()`, then `fp ≥ 0`;
+
+* if `r` is `SameSign()`, then `ip` and `fp` have the same sign.
+
+The multiplier `n` must be strictly positive.
+
+```julia
+fixtime(TimeSpec, sec, nsec) -> ts
+```
+
+yields an instance of `TimeSpec` such that `ts` equals `sec` seconds plus
+`nsec` nanoseconds and has normalized fields, that is with a nonnegative number
+of nanoseconds strictly less than 1,000,000,000.
+
+```julia
+fixtime(TimeVal, sec, usec) -> tv
+```
+
+yields an instance of `TimeVal` such that `tv` equals `sec` seconds plus `usec`
+microseconds and has normalized fields, that is with a nonnegative number of
+microseconds strictly less than 1,000,000.
+
+See also [`splittime`](@ref).
+
+"""
+function fixtime(::Type{Ti}, ::Type{Tf}, i::Integer, f::Integer,
+                 n::Integer) where {Ti<:Integer, Tf<:Integer}
+    fixtime(i, f, n, Nonnegative())
+end
+
+# Note that assuming n > 0, then q,r = divrem(f,n) yields q and r that have the
+# same sign as f.
+function fixtime(::Type{Ti}, ::Type{Tf}, i::Integer, f::Integer,
+                 n::Integer, ::Nonnegative) where {Ti<:Integer, Tf<:Integer}
+    ip = Ti(i + div(f, n))
+    fp = Tf(rem(f, n))
+    if fp < 0
+        ip -= Ti(1)
+        fp += Tf(n)
+    end
+    return (ip, fp)
+end
+
+function fixtime(::Type{Ti}, ::Type{Tf}, i::Integer, f::Integer,
+                 n::Integer, ::SameSign) where {Ti<:Integer, Tf<:Integer}
+    ip = Ti(i + div(f, n))
+    fp = Tf(rem(f, n))
+    if fp > 0
+        if ip < 0
+            ip += Ti(1)
+            fp -= Tf(n)
+        end
+    elseif fp < 0
+        if ip > 0
+            ip -= Ti(1)
+            fp += Tf(n)
+        end
+    end
+    return (ip, fp)
+end
+
+fixtime(::Type{TimeSpec}, sec::Integer, nsec::Integer) =
+    TimeSpec(fixtime(_typeof_timespec_sec, _typeof_timespec_nsec,
+                     sec, nsec, NANOSECONDS_PER_SECOND, Nonnegative())...)
+
+fixtime(::Type{TimeVal}, sec::Integer, usec::Integer) =
+    TimeVal(fixtime(_typeof_timeval_sec, _typeof_timeval_usec,
+                    sec, usec, MICROSECONDS_PER_SECOND, Nonnegative())...)
+
+const TimeTypes = Union{TimeSpec,TimeVal}
+const AnyTime = Union{TimeSpec,TimeVal,Libc.TimeVal}
+const AnyTimeVal = Union{TimeVal,Libc.TimeVal}
 
 #
 # Extend addition and subtraction for time structures.
 #
-Base.:(+)(a::TimeSpec, b::TimeSpec) =
-    _fixtime(TimeSpec, a.sec + b.sec, a.nsec + b.nsec)
-Base.:(-)(a::TimeSpec, b::TimeSpec) =
-    _fixtime(TimeSpec, a.sec - b.sec, a.nsec - b.nsec)
-Base.:(+)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a + TimeSpec(b)
-Base.:(-)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a - TimeSpec(b)
-Base.:(+)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) + b
-Base.:(-)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) - b
+Base.:(+)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, intpart(a) + intpart(b), fracpart(a) + fracpart(b))
+Base.:(-)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, intpart(a) - intpart(b), fracpart(a) - fracpart(b))
 
-Base.:(+)(a::TimeVal, b::TimeVal) =
-    _fixtime(TimeVal, a.sec + b.sec, a.usec + b.usec)
-Base.:(-)(a::TimeVal, b::TimeVal) =
-    _fixtime(TimeVal, a.sec - b.sec, a.usec - b.usec)
-Base.:(+)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a + TimeVal(b)
-Base.:(-)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a - TimeVal(b)
-Base.:(+)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) + b
-Base.:(-)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) - b
+Base.:(+)(a::TimeSpec, b::Union{TimeVal,Libc.TimeVal}) =
+    fixtime(TimeSpec, intpart(a) + intpart(b), fracpart(a) + fracpart(b)*1_000)
+Base.:(-)(a::TimeSpec, b::Union{TimeVal,Libc.TimeVal}) =
+    fixtime(TimeSpec, intpart(a) - intpart(b), fracpart(a) - fracpart(b)*1_000)
+
+Base.:(+)(a::Union{TimeVal,Libc.TimeVal}, b::TimeSpec) =
+    fixtime(TimeSpec, intpart(a) + intpart(b), fracpart(a)*1_000 + fracpart(b))
+Base.:(-)(a::Union{TimeVal,Libc.TimeVal}, b::TimeSpec) =
+    fixtime(TimeSpec, intpart(a) - intpart(b), fracpart(a)*1_000 - fracpart(b))
+
+Base.:(+)(a::TimeVal, b::Libc.TimeVal) =
+    fixtime(TimeVal, intpart(a) + intpart(b), fracpart(a) + fracpart(b))
+Base.:(-)(a::TimeVal, b::Libc.TimeVal) =
+    fixtime(TimeVal, intpart(a) - intpart(b), fracpart(a) - fracpart(b))
+
+Base.:(+)(a::Libc.TimeVal, b::TimeVal) =
+    fixtime(TimeVal, intpart(a) + intpart(b), fracpart(a) + fracpart(b))
+Base.:(-)(a::Libc.TimeVal, b::TimeVal) =
+    fixtime(TimeVal, intpart(a) - intpart(b), fracpart(a) - fracpart(b))
+
+Base.:(+)(a::T, b::Integer) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, intpart(a) + b, fracpart(a))
+Base.:(+)(a::Integer, b::T) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, a + intpart(b), fracpart(b))
+
+Base.:(-)(a::T, b::Integer) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, intpart(a) - intpart(b), fracpart(a))
+Base.:(-)(a::Integer, b::T) where {T<:Union{TimeSpec,TimeVal}} =
+    fixtime(T, a - intpart(b), -fracpart(b))
+
+Base.:(+)(a::T, b::Real) where {T<:Union{TimeSpec,TimeVal}} = begin
+    t = floor(b)
+    ip, fp, n = intpart(a), fracpart(a), multiplier(a)
+    fixtime(T, ip + trunc(typeof(ip), t), fp + round(typeof(fp), (b - t)*n))
+end
+Base.:(+)(a::Real, b::T) where {T<:Union{TimeSpec,TimeVal}} = b + a
+
+Base.:(-)(a::T, b::Real) where {T<:Union{TimeSpec,TimeVal}} = begin
+    t = floor(b)
+    ip, fp, n = intpart(a), fracpart(a), multiplier(a)
+    fixtime(T, ip - trunc(typeof(ip), t), fp - round(typeof(fp), (b - t)*n))
+end
+Base.:(-)(a::Real, b::T) where {T<:Union{TimeSpec,TimeVal}} = begin
+    t = floor(a)
+    ip, fp, n = intpart(b), fracpart(b), multiplier(b)
+    fixtime(T, trunc(typeof(ip), t) - ip, round(typeof(fp), (a - t)*n) - fp)
+end
+
+intpart(t::TimeSpec) = t.sec
+fracpart(t::TimeSpec) = t.nsec
+multiplier(t::TimeSpec) = NANOSECONDS_PER_SECOND
+tolerance(::Type{TimeSpec}) = 5e-9
+scale(::Type{TimeSpec}) = 1e-9
+
+intpart(t::Union{TimeVal,Libc.TimeVal}) = t.sec
+fracpart(t::Union{TimeVal,Libc.TimeVal}) = t.usec
+multiplier(t::Union{TimeVal,Libc.TimeVal}) = MICROSECONDS_PER_SECOND
+tolerance(::Type{TimeVal}) = 1e-6
+scale(::Type{TimeVal}) = 1e-6
+
 
 #
-# Extend isapprox for time structures.
+# Extend isapprox and comparison operators for time structures.
 #
-Base.isapprox(a::TimeSpec, b::TimeSpec; atol::Real = 5e-9) =
-    abs((a.sec - b.sec) + 1e-9*(a.nsec - b.nsec)) ≤ atol
+Base.isapprox(a::T, b::T; kwds...) where {T<:Union{TimeSpec,TimeVal}} =
+    _approx0(a - b; kwds...)
 Base.isapprox(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}; kwds...) =
-    isapprox(a, TimeSpec(b); kwds...)
+    _approx0(a - b; kwds...)
 Base.isapprox(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec; kwds...) =
-    isapprox(b, a; kwds...)
-
-Base.isapprox(a::TimeVal, b::TimeVal; atol::Real = 1e-6) =
-    abs((a.sec - b.sec) + 1e-6*(a.usec - b.usec)) ≤ atol
+    _approx0(a - b; kwds...)
 Base.isapprox(a::TimeVal, b::Union{Real,Libc.TimeVal}; kwds...) =
-    isapprox(a, TimeVal(b); kwds...)
+    _approx0(a - b; kwds...)
 Base.isapprox(a::Union{Real,Libc.TimeVal}, b::TimeVal; kwds...) =
-    isapprox(b, a; kwds...)
+    _approx0(a - b; kwds...)
 
-Base.:(==)(a::TimeSpec, b::TimeSpec) = _timediff(a, b) == 0
-Base.:(==)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a == TimeSpec(b)
-Base.:(==)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) == b
+Base.:(==)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}}    = _eq(a, b)
+Base.:(==)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = _eq(a, b)
+Base.:(==)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = _eq(a, b)
+Base.:(==)(a::TimeVal, b::Union{Real,Libc.TimeVal})          = _eq(a, b)
+Base.:(==)(a::Union{Real,Libc.TimeVal}, b::TimeVal)          = _eq(a, b)
 
-Base.:(≤)(a::TimeSpec, b::TimeSpec) = _timediff(a, b) ≤ 0
-Base.:(≤)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a ≤ TimeSpec(b)
-Base.:(≤)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) ≤ b
+Base.:(≤)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}}    = _le(a, b)
+Base.:(≤)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = _le(a, b)
+Base.:(≤)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = _le(a, b)
+Base.:(≤)(a::TimeVal, b::Union{Real,Libc.TimeVal})          = _le(a, b)
+Base.:(≤)(a::Union{Real,Libc.TimeVal}, b::TimeVal)          = _le(a, b)
 
-Base.:(<)(a::TimeSpec, b::TimeSpec) =_timediff(a, b) < 0
-Base.:(<)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = a < TimeSpec(b)
-Base.:(<)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = TimeSpec(a) < b
+Base.:(<)(a::T, b::T) where {T<:Union{TimeSpec,TimeVal}}    = _lt(a, b)
+Base.:(<)(a::TimeSpec, b::Union{Real,TimeVal,Libc.TimeVal}) = _lt(a, b)
+Base.:(<)(a::Union{Real,TimeVal,Libc.TimeVal}, b::TimeSpec) = _lt(a, b)
+Base.:(<)(a::TimeVal, b::Union{Real,Libc.TimeVal})          = _lt(a, b)
+Base.:(<)(a::Union{Real,Libc.TimeVal}, b::TimeVal)          = _lt(a, b)
 
-Base.:(==)(a::TimeVal, b::TimeVal) = _timediff(a, b) == 0
-Base.:(==)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a == TimeVal(b)
-Base.:(==)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) == b
+# Assuming normalized time t = (ip,fp) with fp ∈ [0,n-1] (normalized), the following
+# table summarizes the possibilities.
+#
+#           ip < 0     ip = 0    ip > 0
+#  fp < 0    t < 0      t < 0     t > 0   (not for normalized time)
+#  fp = 0    t < 0      t = 0     t > 0
+#  fp > 0    t < 0      t > 0     t > 0
+#
 
-Base.:(≤)(a::TimeVal, b::TimeVal) = _timediff(a, b) ≤ 0
-Base.:(≤)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a ≤ TimeVal(b)
-Base.:(≤)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) ≤ b
+_eq(a, b) = begin
+    (ip, fp) = _split(a - b)
+    ((ip == 0) & (fp == 0))
+end
 
-Base.:(<)(a::TimeVal, b::TimeVal) = _timediff(a, b) < 0
-Base.:(<)(a::TimeVal, b::Union{Real,Libc.TimeVal}) = a < TimeVal(b)
-Base.:(<)(a::Union{Real,Libc.TimeVal}, b::TimeVal) = TimeVal(a) < b
+_le(a, b) = begin
+    (ip, fp) = _split(a - b)
+    ((ip < 0) | ((ip == 0) & (fp ≤ 0)))
+end
 
-_timediff(a::TimeSpec, b::TimeSpec) =
-    (1_000_000_000*(a.sec - b.sec) + (a.nsec - b.nsec))
+_lt(a, b) = begin
+    (ip, fp) = _split(a - b)
+    (ip < 0)
+end
 
-_timediff(a::TimeVal, b::TimeVal) =
-    (1_000_000*(a.sec - b.sec) + (a.usec - b.usec))
+function _approx0(a::T;
+                  atol::Real = tolerance(T)) where {T<:Union{TimeSpec,TimeVal}}
+    (ip, fp) = _split(a)
+    abs(Float64(ip) + scale(T)*Float64(fp)) ≤ atol
+end
 
+_split(t::Union{TimeSpec,TimeVal,Libc.TimeVal}) = intpart(t), fracpart(t)
 
 """
 ```julia

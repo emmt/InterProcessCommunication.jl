@@ -3,6 +3,7 @@ module IPCTests
 using Test
 
 using InterProcessCommunication
+using InterProcessCommunication: splittime, fixtime
 
 @testset "Basic Functions       " begin
     pid = IPC.getpid()
@@ -50,6 +51,50 @@ end
         @test (tv < tv) == false
         @test (tv > tv) == false
     end
+    h1 = prevfloat(0.5)
+    h2 = nextfloat(0.5)
+    tv = time(TimeVal)
+    r = 1e-6 # resolution = 1 µs
+    @test TimeVal(Libc.TimeVal(tv.sec, tv.usec)) === tv
+    @test TimeSpec(Libc.TimeVal(tv.sec, tv.usec)) === TimeSpec(tv)
+    @test Libc.TimeVal(tv) == tv
+    @test Libc.TimeVal(TimeSpec(tv)) == tv
+    @test tv == Libc.TimeVal(tv.sec, tv.usec)
+    @test tv == tv + 0
+    @test tv == 0 + tv
+    @test tv == tv + h1*r
+    @test tv == h1*r + tv
+    @test tv < tv + r*h2
+    @test tv < r*h2 + tv
+    @test float((tv + r) - tv) == r
+    @test float(tv - (tv - r)) == r
+    @test float((tv + h1*r) - tv) == 0
+    @test float(tv - (tv - h1*r)) == 0
+    @test float((tv + h2*r) - tv) == r
+    @test float(tv - (tv - h2*r)) == r
+    sec, usec = -123, 123456
+    @test TimeVal(TimeSpec(sec,1_000*usec)) === TimeVal(sec,usec)
+    @test TimeVal(TimeSpec(sec,1_000*usec+499)) === TimeVal(sec,usec)
+    @test TimeVal(TimeSpec(sec,1_000*usec+500)) === TimeVal(sec,usec+1)
+    @test TimeVal(TimeSpec(sec,-1_000*usec)) === TimeVal(sec-1,1_000_000-usec)
+    @test TimeVal(TimeSpec(sec,-1_000*usec-499)) === TimeVal(sec-1,1_000_000-usec)
+    @test TimeVal(TimeSpec(sec,-1_000*usec-500)) === TimeVal(sec-1,1_000_000-(usec+1))
+    ts = time(TimeSpec)
+    r = 1e-9 # resolution = 1 ns
+    @test ts == ts + 0
+    @test ts == 0 + ts
+    @test ts == ts + r*h1
+    @test ts == r*h1 + ts
+    @test ts < ts + r*h2
+    @test ts < r*h2 + ts
+    @test float((ts + r) - ts) == r
+    @test float(ts - (ts - r)) == r
+    @test float((ts + h1*r) - ts) == 0
+    @test float(ts - (ts - h1*r)) == 0
+    @test float((ts + h2*r) - ts) == r
+    @test float(ts - (ts - h2*r)) == r
+
+
     float(gettimeofday())
     float(clock_gettime(CLOCK_MONOTONIC))
     float(clock_gettime(CLOCK_REALTIME))
