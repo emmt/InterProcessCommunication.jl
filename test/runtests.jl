@@ -33,7 +33,60 @@ end
 end
 
 @testset "Time Functions        " begin
-    # compile and warmup
+    # Check time normalization and splitting.
+    nonnegative = IPC.Nonnegative()
+    samesign = IPC.SameSign()
+    @test fixtime(Int, Int, +0,     +0, 1_000) === ( 0,    0)
+    @test fixtime(Int, Int, +1,   +400, 1_000) === ( 1,  400)
+    @test fixtime(Int, Int, +1, +2_400, 1_000) === ( 3,  400)
+    @test fixtime(Int, Int, +1,   -400, 1_000) === ( 0,  600)
+    @test fixtime(Int, Int, +1, -2_400, 1_000) === (-2,  600)
+    @test fixtime(Int, Int, -1,   +400, 1_000) === (-1,  400)
+    @test fixtime(Int, Int, -1, +2_400, 1_000) === ( 1,  400)
+    @test fixtime(Int, Int, -1,   -400, 1_000) === (-2,  600)
+    @test fixtime(Int, Int, -1, -2_400, 1_000) === (-4,  600)
+    @test fixtime(Int, Int, +0,     +0, 1_000, nonnegative) === ( 0,    0)
+    @test fixtime(Int, Int, +1,   +400, 1_000, nonnegative) === ( 1,  400)
+    @test fixtime(Int, Int, +1, +2_400, 1_000, nonnegative) === ( 3,  400)
+    @test fixtime(Int, Int, +1,   -400, 1_000, nonnegative) === ( 0,  600)
+    @test fixtime(Int, Int, +1, -2_400, 1_000, nonnegative) === (-2,  600)
+    @test fixtime(Int, Int, -1,   +400, 1_000, nonnegative) === (-1,  400)
+    @test fixtime(Int, Int, -1, +2_400, 1_000, nonnegative) === ( 1,  400)
+    @test fixtime(Int, Int, -1,   -400, 1_000, nonnegative) === (-2,  600)
+    @test fixtime(Int, Int, -1, -2_400, 1_000, nonnegative) === (-4,  600)
+    @test fixtime(Int, Int, +0,     +0, 1_000, samesign) === ( 0,    0)
+    @test fixtime(Int, Int, +1,   +400, 1_000, samesign) === ( 1,  400)
+    @test fixtime(Int, Int, +1, +2_400, 1_000, samesign) === ( 3,  400)
+    @test fixtime(Int, Int, +1,   -400, 1_000, samesign) === ( 0,  600)
+    @test fixtime(Int, Int, +1, -2_400, 1_000, samesign) === (-1, -400)
+    @test fixtime(Int, Int, -1,   +400, 1_000, samesign) === ( 0, -600)
+    @test fixtime(Int, Int, -1, +2_400, 1_000, samesign) === ( 1,  400)
+    @test fixtime(Int, Int, -1,   -400, 1_000, samesign) === (-1, -400)
+    @test fixtime(Int, Int, -1, -2_400, 1_000, samesign) === (-3, -400)
+    @test splittime(Int, Int, +0.000, 1_000, nonnegative) === ( 0,    0)
+    @test splittime(Int, Int, +1.400, 1_000, nonnegative) === ( 1,  400)
+    @test splittime(Int, Int, +3.400, 1_000, nonnegative) === ( 3,  400)
+    @test splittime(Int, Int, +0.600, 1_000, nonnegative) === ( 0,  600)
+    @test splittime(Int, Int, -1.400, 1_000, nonnegative) === (-2,  600)
+    @test splittime(Int, Int, -0.600, 1_000, nonnegative) === (-1,  400)
+    @test splittime(Int, Int, -3.400, 1_000, nonnegative) === (-4,  600)
+    @test splittime(Int, Int, +0.000, 1_000, samesign) === ( 0,    0)
+    @test splittime(Int, Int, +1.400, 1_000, samesign) === ( 1,  400)
+    @test splittime(Int, Int, +3.400, 1_000, samesign) === ( 3,  400)
+    @test splittime(Int, Int, +0.600, 1_000, samesign) === ( 0,  600)
+    @test splittime(Int, Int, -1.400, 1_000, samesign) === (-1, -400)
+    @test splittime(Int, Int, -0.600, 1_000, samesign) === ( 0, -600)
+    @test splittime(Int, Int, -3.400, 1_000, samesign) === (-3, -400)
+
+    # Miscellaneaous.
+    @test IPC.multiplier(TimeVal(0,0)) == 1_000_000
+    @test IPC.multiplier(TimeSpec(0,0)) == 1_000_000_000
+    @test IPC.scale(TimeVal) == 1e-6
+    @test IPC.tolerance(TimeVal) ≥ IPC.scale(TimeVal)
+    @test IPC.scale(TimeSpec) == 1e-9
+    @test IPC.tolerance(TimeSpec) ≥ IPC.scale(TimeSpec)
+
+    # Compile and warmup.
     for ts in (time(TimeSpec), now(TimeSpec))
         @test ts ≈ ts
         @test (ts != ts) == false
@@ -51,11 +104,14 @@ end
         @test (tv < tv) == false
         @test (tv > tv) == false
     end
+    ms = 0.001
+    µs = 0.000_001
+    ns = 0.000_000_001
     h1 = prevfloat(0.5)
     h2 = nextfloat(0.5)
     sec, usec, nsec = -123, 123456, 123456123
     tv = time(TimeVal)
-    r = 1e-6 # resolution = 1 µs
+    r = µs # resolution for TimeVal
     @test TimeVal(tv) === tv
     @test TimeVal(sec) === TimeVal(sec,0)
     @test TimeVal(sec + usec*r) === TimeVal(sec,usec)
@@ -66,6 +122,9 @@ end
     @test Libc.TimeVal(TimeSpec(tv)) == tv
     @test tv == Libc.TimeVal(tv.sec, tv.usec)
     @test 0 - tv === -tv
+    @test 37 - tv === -(tv - 37)
+    @test π - tv === -(tv - π)
+    @test (tv + (-tv)) === TimeVal(0,0)
     @test tv == tv + 0
     @test tv == 0 + tv
     @test tv == tv + h1*r
@@ -78,6 +137,10 @@ end
     @test float(tv - (tv - h1*r)) == 0
     @test float((tv + h2*r) - tv) == r
     @test float(tv - (tv - h2*r)) == r
+    for T in (Float32, Float64, BigFloat)
+        t = TimeVal(1 + 3r)
+        @test T(t) ≈ t
+    end
     @test TimeVal(123.456789) == float(TimeVal(123.456789))
     @test TimeVal(h1*r) == float(TimeVal(0,0))
     @test TimeVal(h2*r) == float(TimeVal(0,1))
@@ -92,12 +155,40 @@ end
     @test typemin(TimeVal) + 1 == typemin(TimeVal) + 1.0 < 0
     @test typemax(TimeVal) - 1 == typemax(TimeVal) - 1.0 > 0
     ts = time(TimeSpec)
-    r = 1e-9 # resolution = 1 ns
+    r = ns # resolution for TimeSpec
     @test TimeSpec(ts) === ts
     @test TimeSpec(sec) === TimeSpec(sec,0)
     @test TimeSpec(sec + nsec*r) === TimeSpec(sec,nsec)
     @test TimeSpec(sec - nsec*r) == TimeSpec(sec,-nsec)
     @test 0 - ts === -ts
+    @test 37 - ts === -(ts - 37)
+    @test π - ts === -(ts - π)
+    @test (ts + (-ts)) === TimeSpec(0,0)
+    for (a,b,c) in ((TimeVal(-2.58), TimeVal(0.4),             TimeVal(-2.18)),
+                    (TimeVal(-2.58), Libc.TimeVal(0,400_000),  TimeVal(-2.18)),
+                    (TimeVal(-2.58), 4//10,                    TimeVal(-2.18)),
+                    (TimeSpec(-2.58), TimeVal(0.4),            TimeSpec(-2.18)),
+                    (TimeSpec(-2.58), Libc.TimeVal(0,400_000), TimeSpec(-2.18)),
+                    (TimeSpec(-2.58), 4//10,                   TimeSpec(-2.18)),
+                    )
+        @test a + b === c
+        @test b + a === c
+        @test a + b ≈ c
+        if !isa(b, Libc.TimeVal)
+            @test a - (-b) === c
+            @test (b ≥ 0 ? a + b ≥ a : a + b < a)
+            @test (b ≥ 0 ? a - b ≤ a : a - b > a)
+            @test (b > 0 ? a + b > a : a + b ≤ a)
+            @test (b > 0 ? a - b < a : a - b ≥ a)
+        end
+        if !isa(a, Libc.TimeVal)
+            @test b - (-a) === c
+            @test (a ≥ 0 ? b + a ≥ b : b + a < b)
+            @test (a ≥ 0 ? b - a ≤ b : b - a > b)
+            @test (a > 0 ? b + a > b : b + a ≤ b)
+            @test (a > 0 ? b - a < b : b - a ≥ b)
+        end
+    end
     @test ts == ts + 0
     @test ts == 0 + ts
     @test ts == ts + r*h1
@@ -110,6 +201,10 @@ end
     @test float(ts - (ts - h1*r)) == 0
     @test float((ts + h2*r) - ts) == r
     @test float(ts - (ts - h2*r)) == r
+    for T in (Float32, Float64, BigFloat)
+        t = TimeSpec(1 + 3r)
+        @test T(t) ≈ t
+    end
     @test TimeSpec(123.456789) == float(TimeSpec(123.456789))
     @test TimeSpec(h1*r) == float(TimeSpec(0,0))
     @test TimeSpec(h2*r) == float(TimeSpec(0,1))
@@ -118,7 +213,8 @@ end
     @test typemin(TimeSpec) + 1 == typemin(TimeSpec) + 1.0 < 0
     @test typemax(TimeSpec) - 1 == typemax(TimeSpec) - 1.0 > 0
 
-
+    @test_throws SystemError clock_settime(CLOCK_REALTIME, gettimeofday())
+    @test_throws SystemError clock_settime(CLOCK_REALTIME, clock_gettime(CLOCK_REALTIME))
     float(gettimeofday())
     float(clock_gettime(CLOCK_MONOTONIC))
     float(clock_gettime(CLOCK_REALTIME))
@@ -126,9 +222,6 @@ end
     float(clock_getres(CLOCK_REALTIME))
 
     # compare times
-    ms = 0.001
-    µs = 0.000_001
-    ns = 0.000_000_001
     @test abs(time() - float(gettimeofday())) ≤ 1ms
     @test abs(time() - float(clock_gettime(CLOCK_REALTIME))) ≤ 1ms
     @test float(clock_getres(CLOCK_MONOTONIC)) ≤ 1ms
