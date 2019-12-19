@@ -25,9 +25,9 @@ The `InterProcessCommunication` package provides:
 
 * Array-like objects stored in shared memory.
 
-* Access to POSIX mutexes, condition variables and read/write locks.  These
-  objects can optionally be stored in shared memory and shared between
-  processes.
+* Access to POSIX **mutexes**, **condition variables** and **read/write
+  locks**.  These objects can optionally be stored in shared memory and shared
+  between processes.
 
 
 ## Installation
