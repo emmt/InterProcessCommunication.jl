@@ -76,8 +76,8 @@ All these can be done at the prompt of Julia's package manager:
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/InterProcessCommunication.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/InterProcessCommunication.jl
+[travis-img]: https://travis-ci.com/emmt/InterProcessCommunication.jl.svg?branch=master
+[travis-url]: https://travis-ci.com/emmt/InterProcessCommunication.jl
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/InterProcessCommunication.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/InterProcessCommunication-jl/branch/master
