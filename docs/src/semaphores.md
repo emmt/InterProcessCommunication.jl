@@ -9,9 +9,10 @@ by one with `wait(sem)`.  If the value of a semaphore is currently zero, then a
 There are two kinds of semaphores: *named* and *anonymous* semaphores.  [Named
 Semaphores](@ref) are identified by their name which is a string of the form
 `"/somename"`.  [Anonymous Semaphores](@ref) are backed by *memory* objects
-(usually shared memory) providing the necessary storage.  In Julia IPC package,
-semaphores are instances of `Semaphore{T}` where `T` is `String` for named
-semaphores and the type of the backing memory object for anonymous semaphores.
+(usually shared memory) providing the necessary storage.  In Julia
+`InterProcessCommunication` package, semaphores are instances of `Semaphore{T}`
+where `T` is `String` for named semaphores and the type of the backing memory
+object for anonymous semaphores.
 
 
 ## Named Semaphores

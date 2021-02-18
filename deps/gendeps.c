@@ -1,12 +1,15 @@
 /*
  * gendeps.c --
  *
- * Generate definitions for the IPC.jl package.
+ * Generate definitions for the InterProcessCommunication.jl package.
  *
  *------------------------------------------------------------------------------
  *
- * This file is part of IPC.jl released under the MIT "expat" license.
- * Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).
+ * This file is part of InterProcessCommunication.jl released under the MIT
+ * "expat" license.
+ *
+ * Copyright (C) 2016-2021, Éric Thiébaut
+ * (https://github.com/emmt/InterProcessCommunication.jl).
  */
 
 #include <sys/types.h>
@@ -146,15 +149,18 @@ int main(int argc, char* argv[])
   PUTS("#");
   PUTS("# deps.jl --");
   PUTS("#");
-  PUTS("# Definitions for the IPC.jl package.");
+  PUTS("# Definitions for the InterProcessCommunication.jl package.");
   PUTS("#");
   PUTS("# *IMPORTANT* This file has been automatically generated, do not edit it");
   PUTS("#             directly but rather modify the source in `../deps/gendeps.c`.");
   PUTS("#");
   PUTS("#------------------------------------------------------------------------------");
   PUTS("#");
-  PUTS("# This file is part of IPC.jl released under the MIT \"expat\" license.");
-  PUTS("# Copyright (C) 2016-2019, Éric Thiébaut (https://github.com/emmt/IPC.jl).");
+  PUTS("# This file is part of InterProcessCommunication.jl released under the MIT");
+  PUTS("# \"expat\" license.");
+  PUTS("#");
+  PUTS("# Copyright (C) 2016-2021, Éric Thiébaut");
+  PUTS("# (https://github.com/emmt/InterProcessCommunication.jl).");
   PUTS("#");
   PUTS("");
   PUTS("# Standard codes returned by many functions of the C library:");

@@ -1,8 +1,8 @@
 # Reference
 
 The following provides detailled documentation about types and methods provided
-by the IPC package.  This information is also available from the REPL by typing
-`?` followed by the name of a method or a type.
+by the `InterProcessCommunication` package.  This information is also available
+from the REPL by typing `?` followed by the name of a method or a type.
 
 
 ## Semaphores

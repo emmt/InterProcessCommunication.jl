@@ -1,6 +1,6 @@
 # Shared Memory
 
-The `IPC` package provides two kinds of shared memory objects: *named shared
+The `InterProcessCommunication` package provides two kinds of shared memory objects: *named shared
 memory* objects which are identified by their name and *BSD (System V) shared
 memory segments* which are identified by a key.
 
@@ -98,12 +98,12 @@ no shared memory segment corresponding to `key` exists.
 Argument `flg` is a bitwise combination of flags.  The least significant 9 bits
 specify the permissions granted to the owner, group, and others.  These bits
 have the same format, and the same meaning, as the mode argument of `chmod`.
-Bit `IPC_CREAT` can be set to create a new segment.  If this flag is not used,
-then `shmget` will find the segment associated with `key` and check to see if
-the user has permission to access the segment.  Bit `IPC_EXCL` can be set in
-addition to `IPC_CREAT` to ensure that this call creates the segment.  If
-`IPC_EXCL` and `IPC_CREAT` are both set, the call will fail if the segment
-already exists.
+Bit `IPC_CREAT` can be set to create a new segment.  If
+this flag is not used, then `shmget` will find the segment associated with
+`key` and check to see if the user has permission to access the segment.  Bit
+`IPC_EXCL` can be set in addition to `IPC_CREAT` to ensure that this call
+creates the segment.  If `IPC_EXCL` and `IPC_CREAT` are both set, the call will
+fail if the segment already exists.
 
 
 ### Attaching and detaching shared memory
