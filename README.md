@@ -33,7 +33,7 @@ The `InterProcessCommunication` package provides:
 ## Documentation
 
 The documentation for `InterProcessCommunication` package is
-[here](https://emmt.github.io/InterProcessCommunication.jl).
+[here](https://emmt.github.io/InterProcessCommunication.jl/dev).
 
 
 ## Installation
