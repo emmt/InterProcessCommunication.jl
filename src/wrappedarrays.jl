@@ -175,16 +175,20 @@ Base.elsize(::Type{WrappedArray{T,N,M}}) where {T,N,M} = elsize(Array{T,N})
 
 Base.IndexStyle(::Type{<:WrappedArray}) = Base.IndexLinear()
 
-@inline @propagate_inbounds Base.getindex(obj::WrappedArray, i::Int) =
-    (@boundscheck checkbounds(obj, i);
-     @inbounds getindex(parent(obj), i))
+@inline Base.getindex(A::WrappedArray, i::Int) = begin
+    @boundscheck checkbounds(A, i)
+    @inbounds val = parent(A)[i]
+    val
+end
 
-@inline @propagate_inbounds Base.setindex!(obj::WrappedArray, x, i::Int) =
-    (@boundscheck checkbounds(obj, i);
-     @inbounds setindex!(parent(obj), x, i))
+@inline Base.setindex!(A::WrappedArray, val, i::Int) = begin
+    @boundscheck checkbounds(A, i)
+    @inbounds parent(A)[i] = val
+    A
+end
 
-@inline Base.checkbounds(::Type{Bool}, obj::WrappedArray, i::Int) =
-    (i % UInt) - 1 < length(obj)
+@inline Base.checkbounds(::Type{Bool}, A::WrappedArray, i::Int) =
+    (i % UInt) - 1 < length(A)
 
 Base.copy(obj::WrappedArray) = copy(parent(obj))
 
