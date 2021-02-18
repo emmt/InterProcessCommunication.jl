@@ -54,8 +54,14 @@ Base.cconvert(::Type{T}, pid::ProcessId) where {T<:Integer} =
 
 Base.getindex(sigset::SigSet, i::Integer) = sigismember(sigset, i)
 
-Base.setindex!(sigset::SigSet, val::Bool, i::Integer) =
-    (val ? sigaddset!(sigset, i) : sigdelset!(sigset, i))
+Base.setindex!(sigset::SigSet, val::Bool, i::Integer) = begin
+    if val
+        sigaddset!(sigset, i)
+    else
+        sigdelset!(sigset, i)
+    end
+    sigset
+end
 
 function Base.fill!(sigset::SigSet, val::Bool)
     if val
