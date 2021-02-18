@@ -30,6 +30,12 @@ The `InterProcessCommunication` package provides:
   between processes.
 
 
+## Documentation
+
+The documentation for `InterProcessCommunication` package is
+[here](https://emmt.github.io/InterProcessCommunication.jl).
+
+
 ## Installation
 
 Installation is not yet fully automated in the spirit of official Julia
