@@ -1,7 +1,8 @@
-using Documenter
-
 push!(LOAD_PATH, "../src/")
+using Pkg
+Pkg.build("InterProcessCommunication")
 using InterProcessCommunication
+using Documenter
 
 DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 
