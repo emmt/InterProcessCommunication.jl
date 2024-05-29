@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
   DEF_CONST(PTHREAD_PROCESS_PRIVATE, " = %d");
 
   PUTS("\n# Definitions for `struct stat`:");
-  DEF_SIZEOF_TYPE("struct_stat       ", struct stat);
+  DEF_SIZEOF_TYPE("struct_stat     ", struct stat);
   DEF_OFFSETOF("stat_dev     ", struct stat, st_dev);
   DEF_OFFSETOF("stat_ino     ", struct stat, st_ino);
   DEF_OFFSETOF("stat_mode    ", struct stat, st_mode);
@@ -666,10 +666,10 @@ int main(int argc, char* argv[])
 
   PUTS("\n# Possible `si_code` values for a SIGTRAP signal:");
 #ifdef TRAP_BRKPT
-  DEF_CONST(TRAP_BRKPT, " = Cint(%d) # Process breakpoint.");
+  DEF_CONST(TRAP_BRKPT, "  = Cint(%d) # Process breakpoint.");
 #endif
 #ifdef TRAP_TRACE
-  DEF_CONST(TRAP_TRACE, " = Cint(%d) # Process trace trap.");
+  DEF_CONST(TRAP_TRACE, "  = Cint(%d) # Process trace trap.");
 #endif
 #ifdef TRAP_BRANCH
   DEF_CONST(TRAP_BRANCH, " = Cint(%d) # Process taken branch trap.");
@@ -680,19 +680,19 @@ int main(int argc, char* argv[])
 
   PUTS("\n# Possible `si_code` values for a SIGCHLD signal:");
 #ifdef CLD_EXITED
-  DEF_CONST(CLD_EXITED, " = Cint(%d) # Child has exited.");
+  DEF_CONST(CLD_EXITED, "   = Cint(%d) # Child has exited.");
 #endif
 #ifdef CLD_KILLED
-  DEF_CONST(CLD_KILLED, " = Cint(%d) # Child was killed.");
+  DEF_CONST(CLD_KILLED, "    = Cint(%d) # Child was killed.");
 #endif
 #ifdef CLD_DUMPED
-  DEF_CONST(CLD_DUMPED, " = Cint(%d) # Child terminated abnormally.");
+  DEF_CONST(CLD_DUMPED, "    = Cint(%d) # Child terminated abnormally.");
 #endif
 #ifdef CLD_TRAPPED
-  DEF_CONST(CLD_TRAPPED, " = Cint(%d) # Traced child has trapped.");
+  DEF_CONST(CLD_TRAPPED, "   = Cint(%d) # Traced child has trapped.");
 #endif
 #ifdef CLD_STOPPED
-  DEF_CONST(CLD_STOPPED, " = Cint(%d) # Child has stopped.");
+  DEF_CONST(CLD_STOPPED, "   = Cint(%d) # Child has stopped.");
 #endif
 #ifdef CLD_CONTINUED
   DEF_CONST(CLD_CONTINUED, " = Cint(%d) # Stopped child has continued.");
