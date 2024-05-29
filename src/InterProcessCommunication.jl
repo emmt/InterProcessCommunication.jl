@@ -63,7 +63,8 @@ export
     sigwait!,
     sigwait,
     timedlock,
-    trywait
+    trywait,
+    umask
 
 using Printf
 using Dates

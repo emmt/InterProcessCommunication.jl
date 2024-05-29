@@ -12,6 +12,9 @@ using InterProcessCommunication: splittime, fixtime
     @test isa(string(IPC.getppid()), String)
     @test isa(string(IPC.getuid()), String)
     @test isa(string(IPC.geteuid()), String)
+    new_msk = 0o022
+    old_msk = @inferred umask(new_msk)
+    @test new_msk == @inferred umask(old_msk)
 end
 
 @testset "File Functions        " begin

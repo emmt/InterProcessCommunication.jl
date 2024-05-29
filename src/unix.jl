@@ -74,20 +74,34 @@ Base.show(io::IO, ::MIME"text/plain", arg::Union{ProcessId,UserId}) =
 const MASKMODE = (S_IRWXU|S_IRWXG|S_IRWXO)
 
 """
-```julia
-maskmode(mode)
-```
+    IPC.maskmode(mode)
 
-returns the `MASKMODE` bits of `mode` converted to `mode_t` C type.
+returns the `IPC.MASKMODE` bits of `mode` converted to `mode_t` C type.
 
-Constant `MASKMODE` is a bit mask for the granted access permissions (in
-general it has its 9 least significant bitrs set).
+Constant `IPC.MASKMODE = 0o$(string(MASKMODE, base=8))` is a bit mask for the
+granted access permissions (in general it has its 9 least significant bits
+set).
+
+See also [`IPC.umask`](@ref).
 
 """
 maskmode(mode::Integer) :: _typeof_mode_t =
     convert(_typeof_mode_t, mode) & MASKMODE
 
 @doc @doc(maskmode) MASKMODE
+
+"""
+    umask(msk) -> old
+
+sets the calling process's file mode creation mask (`umask`) to `msk & 0o0777`
+(i.e., only the file permission bits of mask are used), and returns the
+previous value of the mask.
+
+See also [`IPC.maskmode`](@ref).
+
+"""
+umask(mask::Integer) =
+    ccall(:umask, _typeof_mode_t, (_typeof_mode_t,), mask)
 
 _open(path::AbstractString, flags::Integer, mode::Integer) =
     ccall(:open, Cint, (Cstring, Cint, _typeof_mode_t), path, flags, mode)
@@ -98,8 +112,6 @@ _creat(path::AbstractString, mode::Integer) =
 _close(fd::Integer) =
     ccall(:close, Cint, (Cint,), fd)
 
-_umask(mask::Integer) =
-    ccall(:umask, _typeof_mode_t, (_typeof_mode_t,), mask)
 
 _read(fd::Integer, buf::Union{DenseArray,Ptr}, cnt::Integer) =
     ccall(:read, _typeof_ssize_t, (Cint, Ptr{Cvoid}, _typeof_size_t),

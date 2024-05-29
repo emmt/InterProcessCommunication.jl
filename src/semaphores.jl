@@ -20,10 +20,11 @@ Semaphore(name, value; perms=0o600, volatile=true) -> sem
 ```
 
 creates a new named semaphore identified by the string `name` of the form
-`"/somename"` and initial value set to `value`.  An instance of
-`Semaphore{String}` is returned.  Keyword `perms` can be used to specify access
-permissions.  Keyword `volatile` specify whether the semaphore should be
-unlinked when the returned object is finalized.
+`"/somename"` and initial value set to `value`. An instance of
+`Semaphore{String}` is returned. Keyword `perms` can be used to specify access
+permissions. The permissions settings are masked against the process `umask`.
+Keyword `volatile` specifies whether the semaphore should be unlinked when the
+returned object is finalized.
 
 ```julia
 Semaphore(name) -> sem
