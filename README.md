@@ -1,8 +1,10 @@
 # Inter-Process Communication for Julia
 
-| **Documentation**               | **License**                     | **Build Status**              | **Code Coverage**                                                   |
-|:--------------------------------|:--------------------------------|:------------------------------|:--------------------------------------------------------------------|
-| [![][doc-dev-img]][doc-dev-url] | [![][license-img]][license-url] | [![][travis-img]][travis-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
+[![License][license-img]][license-url]
+[![Documentation][doc-dev-img]][doc-dev-url]
+[![Build Status][github-ci-img]][github-ci-url]
+[![Coverage][coveralls-img]][coveralls-url]
+[![Coverage][codecov-img]][codecov-url]
 
 Julia has already many methods for inter-process communication (IPC): sockets,
 semaphores, memory mapped files, etc.  You may however want to have Julia
@@ -82,8 +84,8 @@ All these can be done at the prompt of Julia's package manager:
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/InterProcessCommunication.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/InterProcessCommunication.jl
+[github-ci-img]: https://github.com/emmt/InterProcessCommunication.jl/actions/workflows/CI.yml/badge.svg?branch=master
+[github-ci-url]: https://github.com/emmt/InterProcessCommunication.jl/actions/workflows/CI.yml?query=branch%3Amaster
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/InterProcessCommunication.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/InterProcessCommunication-jl/branch/master
