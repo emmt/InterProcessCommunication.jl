@@ -101,7 +101,7 @@ end
 
 function Semaphore(name::AbstractString)
     flags = zero(Cint)
-    mode = zero(_typeof_mode_t)
+    mode = zero(mode_t)
     value = zero(Cuint)
     return open(Semaphore, name, flags, mode, value, false)
 end
