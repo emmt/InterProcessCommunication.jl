@@ -22,7 +22,7 @@ Semaphore(name, value; perms=0o600, volatile=true) -> sem
 creates a new named semaphore identified by the string `name` of the form
 `"/somename"` and initial value set to `value`. An instance of
 `Semaphore{String}` is returned. Keyword `perms` can be used to specify access
-permissions. The permissions settings are masked against the process `umask`.
+permissions.
 Keyword `volatile` specifies whether the semaphore should be unlinked when the
 returned object is finalized.
 
@@ -52,8 +52,9 @@ open(Semaphore, name, flags, mode, value, volatile) -> sem
 where `flags` may have the bits `IPC.O_CREAT` and `IPC.O_EXCL` set, `mode`
 specifies the granted access permissions, `value` is the initial semaphore
 value and `volatile` is a boolean indicating whether the semaphore should be
-unlinked when the returned object `sem` is finalized.  The values of `mode` and
-`value` are ignored if an existing named semaphore is open.
+unlinked when the returned object `sem` is finalized. The values of `mode` and
+`value` are ignored if an existing named semaphore is open. The permissions
+settings in `mode` are masked against the process `umask`.
 
 
 ## Anonymous Semaphores
@@ -68,7 +69,7 @@ Semaphore(mem, value; offset=0, volatile=true) -> sem
 initializes an anonymous semaphore backed by memory object `mem` with initial
 value set to `value` and returns an instance of `Semaphore{typeof(mem)}`.
 Keyword `offset` can be used to specify the address (in bytes) of the semaphore
-data relative to `pointer(mem)`.  Keyword `volatile` specify whether the
+data relative to `pointer(mem)`. Keyword `volatile` specify whether the
 semaphore should be destroyed when the returned object is finalized.
 
 ```julia
@@ -81,7 +82,7 @@ position (in bytes) specified by keyword `offset`.
 
 The number of bytes needed to store an anonymous semaphore is given by
 `sizeof(Semaphore)` and anonymous semaphore must be aligned in memory at
-multiples of the word size (that is `Sys.WORD_SIZE >> 3` in bytes).  Memory
+multiples of the word size (that is `Sys.WORD_SIZE >> 3` in bytes). Memory
 objects used to store an anonymous semaphore must implement two methods:
 `pointer(mem)` and `sizeof(mem)` to yield respectively the base address and the
 size (in bytes) of the associated memory.
@@ -96,7 +97,12 @@ function Semaphore(name::AbstractString, value::Integer;
     val = _check_semaphore_value(value)
     mode = maskmode(perms)
     flags = O_CREAT | O_EXCL
-    return open(Semaphore, name, flags, mode, val, volatile)
+    old_mask = umask(0) # clear file mode creation mask remembering previous settings
+    try
+        return open(Semaphore, name, flags, mode, val, volatile)
+    finally
+        umask(old_mask) # restore file mode creation mask
+    end
 end
 
 function Semaphore(name::AbstractString)
@@ -112,7 +118,7 @@ function Base.open(::Type{Semaphore}, name::AbstractString, flags::Integer,
     systemerror("sem_open", ptr == SEM_FAILED)
     sem = Semaphore{String}(ptr, name)
     if volatile
-        finalizer(_close_and_unlink, sem,)
+        finalizer(_close_and_unlink, sem)
     else
         finalizer(_close, sem)
     end
@@ -125,8 +131,7 @@ function Semaphore(mem::M, value::Integer;
                    volatile::Bool = true) where {M}
     val = _check_semaphore_value(value)
     ptr = _get_semaphore_address(mem, offset)
-    systemerror("sem_init",
-                _sem_init(ptr, true, val) != SUCCESS)
+    systemerror("sem_init", _sem_init(ptr, true, val) != SUCCESS)
     sem = Semaphore{M}(ptr, mem)
     if volatile
         finalizer(_destroy, sem)

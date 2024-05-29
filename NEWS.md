@@ -4,6 +4,10 @@
 
 * Export `umask` to set the calling process's file mode creation mask.
 
+* When creating a semaphore, `Semaphore(...)` ignores the calling process's file mode
+  creation mask for the access permissions while `open(Semaphore, ...)` masks the access
+  permissions against the process `umask`.
+
 * Standard C types are no longer prefixed by `_typeof_`. For example, Julia equivalent of
   C `mode_t` is given by constant `IPC.mode_t`.
 
