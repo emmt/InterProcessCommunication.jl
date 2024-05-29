@@ -1,4 +1,4 @@
-# USer visible changes in `InterProcessCommunication`
+# User visible changes in `InterProcessCommunication`
 
 # Version 0.1.2
 
