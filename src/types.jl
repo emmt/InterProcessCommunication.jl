@@ -75,19 +75,19 @@ struct ShmId
 end
 
 mutable struct ShmInfo
-    atime::UInt64 # last attach time
-    dtime::UInt64 # last detach time
-    ctime::UInt64 # last change time
-    segsz::UInt64 # size of the public area
-    id::Int32     # shared memory identifier
-    cpid::Int32   # process ID of creator
-    lpid::Int32   # process ID of last operator
-    nattch::Int32 # no. of current attaches
-    mode::UInt32  # lower 9 bits of access modes
-    uid::UInt32   # effective user ID of owner
-    gid::UInt32   # effective group ID of owner
-    cuid::UInt32  # effective user ID of creator
-    cgid::UInt32  # effective group ID of creator
+    atime::time_t    # last attach time
+    dtime::time_t    # last detach time
+    ctime::time_t    # last change time
+    segsz::Int64     # size of the public area
+    id::Cint         # shared memory identifier
+    cpid::pid_t      # process ID of creator
+    lpid::pid_t      # process ID of last operator
+    nattch::shmatt_t # no. of current attaches
+    mode::mode_t     # lower 9 bits of access modes
+    uid::uid_t       # effective user ID of owner
+    gid::gid_t       # effective group ID of owner
+    cuid::uid_t      # effective user ID of creator
+    cgid::gid_t      # effective group ID of creator
     ShmInfo() = new(0,0,0,0,0,0,0,0,0,0,0,0,0)
 end
 
