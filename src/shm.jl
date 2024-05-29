@@ -408,7 +408,7 @@ function shmget(key::Key, siz::Integer, flg::Integer)
 end
 
 _shmget(key::Integer, siz::Integer, flg::Integer) =
-    ccall(:shmget, Cint, (_typeof_key_t, Csize_t, Cint), key, siz, flg)
+    ccall(:shmget, Cint, (key_t, Csize_t, Cint), key, siz, flg)
 
 
 """
@@ -550,19 +550,19 @@ the System V shared memory segment identified or associated with `arg`.  See
 function shminfo!(id::ShmId, info::ShmInfo)
     buf = _workspace(_sizeof_struct_shmid_ds)
     shmctl(id, IPC_STAT, buf)
-    info.atime  = _peek(_typeof_time_t,        buf, _offsetof_shm_atime)
-    info.dtime  = _peek(_typeof_time_t,        buf, _offsetof_shm_dtime)
-    info.ctime  = _peek(_typeof_time_t,        buf, _offsetof_shm_ctime)
+    info.atime  = _peek(time_t,        buf, _offsetof_shm_atime)
+    info.dtime  = _peek(time_t,        buf, _offsetof_shm_dtime)
+    info.ctime  = _peek(time_t,        buf, _offsetof_shm_ctime)
     info.segsz  = _peek(_typeof_shm_segsz,     buf, _offsetof_shm_segsz)
     info.id     = id.value
-    info.cpid   = _peek(_typeof_pid_t,         buf, _offsetof_shm_cpid)
-    info.lpid   = _peek(_typeof_pid_t,         buf, _offsetof_shm_lpid)
-    info.nattch = _peek(_typeof_shmatt_t,      buf, _offsetof_shm_nattch)
+    info.cpid   = _peek(pid_t,         buf, _offsetof_shm_cpid)
+    info.lpid   = _peek(pid_t,         buf, _offsetof_shm_lpid)
+    info.nattch = _peek(shmatt_t,      buf, _offsetof_shm_nattch)
     info.mode   = _peek(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode)
-    info.uid    = _peek(_typeof_uid_t,         buf, _offsetof_shm_perm_uid)
-    info.gid    = _peek(_typeof_gid_t,         buf, _offsetof_shm_perm_gid)
-    info.cuid   = _peek(_typeof_uid_t,         buf, _offsetof_shm_perm_cuid)
-    info.cgid   = _peek(_typeof_gid_t,         buf, _offsetof_shm_perm_cgid)
+    info.uid    = _peek(uid_t,         buf, _offsetof_shm_perm_uid)
+    info.gid    = _peek(gid_t,         buf, _offsetof_shm_perm_gid)
+    info.cuid   = _peek(uid_t,         buf, _offsetof_shm_perm_cuid)
+    info.cgid   = _peek(gid_t,         buf, _offsetof_shm_perm_cgid)
     return info
 end
 

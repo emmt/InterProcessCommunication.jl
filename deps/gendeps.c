@@ -84,7 +84,7 @@
   do {                                                  \
     type lval;                                          \
     SET_ALL_BITS(lval);                                 \
-    fprintf(output, "const _typeof_%s%s = %sInt%u\n",   \
+    fprintf(output, "const %s%s = %sInt%u\n",           \
             #type, space, (lval < 0 ? "" : "U"),        \
             (unsigned)(8*sizeof(lval)));                \
                                                         \
@@ -194,18 +194,18 @@ int main(int argc, char* argv[])
   DEF_CONST(O_TRUNC, "  = Cint(0o%04o)");
 
   PUTS("\n# Bits for file permissions:");
-  DEF_CONST(S_IRWXU, " = _typeof_mode_t(0o%04o) # user has read, write, and execute permission");
-  DEF_CONST(S_IRUSR, " = _typeof_mode_t(0o%04o) # user has read permission");
-  DEF_CONST(S_IWUSR, " = _typeof_mode_t(0o%04o) # user has write permission");
-  DEF_CONST(S_IXUSR, " = _typeof_mode_t(0o%04o) # user has execute permission");
-  DEF_CONST(S_IRWXG, " = _typeof_mode_t(0o%04o) # group has read, write, and execute permission");
-  DEF_CONST(S_IRGRP, " = _typeof_mode_t(0o%04o) # group has read permission");
-  DEF_CONST(S_IWGRP, " = _typeof_mode_t(0o%04o) # group has write permission");
-  DEF_CONST(S_IXGRP, " = _typeof_mode_t(0o%04o) # group has execute permission");
-  DEF_CONST(S_IRWXO, " = _typeof_mode_t(0o%04o) # others have read, write, and execute permission");
-  DEF_CONST(S_IROTH, " = _typeof_mode_t(0o%04o) # others have read permission");
-  DEF_CONST(S_IWOTH, " = _typeof_mode_t(0o%04o) # others have write permission");
-  DEF_CONST(S_IXOTH, " = _typeof_mode_t(0o%04o) # others have execute permission");
+  DEF_CONST(S_IRWXU, " = mode_t(0o%04o) # user has read, write, and execute permission");
+  DEF_CONST(S_IRUSR, " = mode_t(0o%04o) # user has read permission");
+  DEF_CONST(S_IWUSR, " = mode_t(0o%04o) # user has write permission");
+  DEF_CONST(S_IXUSR, " = mode_t(0o%04o) # user has execute permission");
+  DEF_CONST(S_IRWXG, " = mode_t(0o%04o) # group has read, write, and execute permission");
+  DEF_CONST(S_IRGRP, " = mode_t(0o%04o) # group has read permission");
+  DEF_CONST(S_IWGRP, " = mode_t(0o%04o) # group has write permission");
+  DEF_CONST(S_IXGRP, " = mode_t(0o%04o) # group has execute permission");
+  DEF_CONST(S_IRWXO, " = mode_t(0o%04o) # others have read, write, and execute permission");
+  DEF_CONST(S_IROTH, " = mode_t(0o%04o) # others have read permission");
+  DEF_CONST(S_IWOTH, " = mode_t(0o%04o) # others have write permission");
+  DEF_CONST(S_IXOTH, " = mode_t(0o%04o) # others have execute permission");
 
   PUTS("\n# Argument for `lseek`:");
   DEF_CONST(SEEK_SET, " = Cint(%d) # offset is relative to the beginning");
@@ -279,8 +279,8 @@ int main(int argc, char* argv[])
 
   PUTS("\n# Definitions for the POSIX `clock_*` functions:");
   DEF_TYPEOF_TYPE(clockid_t, "");
-  DEF_CONST(CLOCK_REALTIME, "  = convert(_typeof_clockid_t, %d)");
-  DEF_CONST(CLOCK_MONOTONIC, " = convert(_typeof_clockid_t, %d)");
+  DEF_CONST(CLOCK_REALTIME, "  = convert(clockid_t, %d)");
+  DEF_CONST(CLOCK_MONOTONIC, " = convert(clockid_t, %d)");
 
   PUTS("\n# Sizes and constants for POSIX thread functions:");
   DEF_SIZEOF_TYPE("pthread_mutex_t      ", pthread_mutex_t);
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
   }
 
   PUTS("\n# Special IPC key:");
-  DEF_CONST(IPC_PRIVATE, " = _typeof_key_t(%d)");
+  DEF_CONST(IPC_PRIVATE, " = key_t(%d)");
 
   PUTS("\n# Flags for `semctl`:");
   DEF_CONST(GETALL, "  = Cint(%d)");
@@ -454,8 +454,7 @@ int main(int argc, char* argv[])
 #ifdef SIG_SETMASK
   DEF_CONST(SIG_SETMASK, " = Cint(%d)");
 #endif
-  fprintf(output, "const _typeof_sigval_t  = Int%d\n",
-          8*(int)sizeof(sigval_t));
+  fprintf(output, "const sigval_t  = Int%d\n", 8*(int)sizeof(sigval_t));
 
   setofbits(output, "_typeof_sigset", sizeof(sigset_t), TRUE);
   DEF_SIZEOF_TYPE("sigset   ", sigset_t);

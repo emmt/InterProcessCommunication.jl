@@ -132,7 +132,7 @@ sigqueue(pid::ProcessId, sig::Integer, val::Integer = 0) =
                 _sigqueue(pid.value, sig, val) != SUCCESS)
 
 _sigqueue(pid::Integer, sig::Integer, val::Integer) =
-    ccall(:sigqueue, Cint, (_typeof_pid_t, Cint, _typeof_sigval_t), pid, sig, val)
+    ccall(:sigqueue, Cint, (pid_t, Cint, sigval_t), pid, sig, val)
 
 """
 
@@ -590,7 +590,7 @@ siginfo_status(ptr::Ptr{SigInfo}) =
     _peek(Cint, ptr + _offsetof_siginfo_status)
 
 siginfo_value(ptr::Ptr{SigInfo}) =
-    _peek(_typeof_sigval_t, ptr + _offsetof_siginfo_value)
+    _peek(sigval_t, ptr + _offsetof_siginfo_value)
 
 siginfo_addr(ptr::Ptr{SigInfo}) =
     _peek(Ptr{Cvoid}, ptr + _offsetof_siginfo_addr)
@@ -600,9 +600,9 @@ siginfo_band(ptr::Ptr{SigInfo}) =
 
 # FIXME: non-POSIX
 # siginfo_utime(ptr::Ptr{SigInfo}) =
-#     _peek(_typeof_clock_t, ptr + _offsetof_siginfo_utime)
+#     _peek(clock_t, ptr + _offsetof_siginfo_utime)
 # siginfo_stime(ptr::Ptr{SigInfo}) =
-#     _peek(_typeof_clock_t, ptr + _offsetof_siginfo_stime)
+#     _peek(clock_t, ptr + _offsetof_siginfo_stime)
 # siginfo_int(ptr::Ptr{SigInfo}) =
 #     _peek(Cint, ptr + _offsetof_siginfo_int)
 # siginfo_ptr(ptr::Ptr{SigInfo}) =

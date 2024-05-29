@@ -14,7 +14,7 @@
 #
 
 # A bit of magic for calling C-code:
-Base.convert(::Type{_typeof_key_t}, key::Key) = key.value
+Base.convert(::Type{key_t}, key::Key) = key.value
 Base.convert(::Type{T}, key::Key) where {T<:Integer} = convert(T, key.value)
 
 # The short version of `show` if also used for string interpolation in
@@ -59,7 +59,7 @@ Key(path::AbstractString, proj::Union{Char,Integer}) =
 
 function Key(path::AbstractString, proj::Cint)
     1 ≤ proj ≤ 255 || throw_argument_error("`proj` must be in the range 1:255")
-    key = ccall(:ftok, _typeof_key_t, (Cstring, Cint), path, proj)
+    key = ccall(:ftok, key_t, (Cstring, Cint), path, proj)
     systemerror("ftok", key == -1)
     return Key(key)
 end
@@ -159,7 +159,7 @@ See also [`clock_gettime`](@ref), [`clock_settime`](@ref),
         res = Ref(TimeSpec(0,0))
         systemerror("clock_getres",
                     ccall(:clock_getres, Cint,
-                          (_typeof_clockid_t, Ptr{TimeSpec}),
+                          (clockid_t, Ptr{TimeSpec}),
                           id, res) != SUCCESS)
         return res[]
     end
@@ -198,7 +198,7 @@ See also [`clock_getres`](@ref), [`clock_settime`](@ref),
         ts = Ref(TimeSpec(0,0))
         systemerror("clock_gettime",
                     ccall(:clock_gettime, Cint,
-                          (_typeof_clockid_t, Ptr{TimeSpec}),
+                          (clockid_t, Ptr{TimeSpec}),
                           id, ts) != SUCCESS)
         return ts[]
     end
@@ -233,7 +233,7 @@ clock_settime(id::Integer, ts::TimeSpec) =
     clock_settime(id, Ref(ts))
 
 clock_settime(id::Integer, ts::Union{Ref{TimeSpec},Ptr{TimeSpec}}) =
-    SUCCESS == ccall(:clock_settime, Cint, (_typeof_clockid_t, Ptr{TimeSpec}),
+    SUCCESS == ccall(:clock_settime, Cint, (clockid_t, Ptr{TimeSpec}),
                      id, ts) || throw_system_error("clock_settime")
 
 """

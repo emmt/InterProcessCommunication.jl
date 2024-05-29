@@ -4,6 +4,9 @@
 
 * Export `umask` to set the calling process's file mode creation mask.
 
+* Standard C types are no longer prefixed by `_typeof_`. For example, Julia equivalent of
+  C `mode_t` is given by constant `IPC.mode_t`.
+
 # Version 0.1.1
 
 * Provide named and anonymous semaphores.

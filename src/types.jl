@@ -29,11 +29,11 @@ struct TimeSpec
 end
 
 struct ProcessId
-    value::_typeof_pid_t
+    value::pid_t
 end
 
 struct UserId
-    value::_typeof_uid_t
+    value::uid_t
 end
 
 # Counterpart of C `sigset_t` structure.  Must be mutable to avoid wrapping it
@@ -65,7 +65,7 @@ mutable struct SigInfo
 end
 
 struct Key
-    value::_typeof_key_t
+    value::key_t
     Key(value::Integer) = new(value)
 end
 
