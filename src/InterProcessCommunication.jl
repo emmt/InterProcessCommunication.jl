@@ -8,7 +8,7 @@
 # This file is part of InterProcessCommunication.jl released under the MIT
 # "expat" license.
 #
-# Copyright (C) 2016-2019, Éric Thiébaut
+# Copyright (c) 2016-2024, Éric Thiébaut
 # (https://github.com/emmt/InterProcessCommunication.jl).
 #
 
@@ -80,7 +80,7 @@ const IPC = InterProcessCommunication
 const PARANOID = true
 
 isfile(joinpath(@__DIR__, "..", "deps", "deps.jl")) ||
-    error("InterProcessCommunication not properly installed.  Please run Pkg.build(\"InterProcessCommunication\")")
+    error("Package `InterProcessCommunication` is not properly installed. Please run `import Pkg; Pkg.build(\"InterProcessCommunication\")`.")
 include(joinpath("..", "deps", "deps.jl"))
 include("types.jl")
 include("wrappedarrays.jl")

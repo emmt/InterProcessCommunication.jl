@@ -8,7 +8,7 @@
 # This file is part of InterProcessCommunication.jl released under the MIT
 # "expat" license.
 #
-# Copyright (C) 2016-2019, Éric Thiébaut
+# Copyright (c) 2016-2024, Éric Thiébaut
 # (https://github.com/emmt/InterProcessCommunication.jl).
 #
 

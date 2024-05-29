@@ -8,7 +8,7 @@
  * This file is part of InterProcessCommunication.jl released under the MIT
  * "expat" license.
  *
- * Copyright (C) 2016-2021, Éric Thiébaut
+ * Copyright (c) 2016-2024, Éric Thiébaut
  * (https://github.com/emmt/InterProcessCommunication.jl).
  */
 
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
   PUTS("# This file is part of InterProcessCommunication.jl released under the MIT");
   PUTS("# \"expat\" license.");
   PUTS("#");
-  PUTS("# Copyright (C) 2016-2021, Éric Thiébaut");
+  PUTS("# Copyright (c) 2016-2024, Éric Thiébaut");
   PUTS("# (https://github.com/emmt/InterProcessCommunication.jl).");
   PUTS("#");
   PUTS("");
