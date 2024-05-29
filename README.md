@@ -37,44 +37,6 @@ The `InterProcessCommunication` package provides:
 The documentation for `InterProcessCommunication` package is
 [here](https://emmt.github.io/InterProcessCommunication.jl/dev).
 
-
-## Installation
-
-Installation is not yet fully automated in the spirit of official Julia
-packages but is rather easy.  It is sufficient to:
-
-```julia
-using Pkg
-Pkg.add(PackageSpec(url="https://github.com/emmt/InterProcessCommunication.jl.git"))
-Pkg.build("InterProcessCommunication")
-```
-
-Optionally, you may test the package:
-
-```julia
-Pkg.test("InterProcessCommunication")
-```
-
-Later, it is sufficient to do:
-
-```julia
-Pkg.update("InterProcessCommunication")
-Pkg.build("InterProcessCommunication")
-```
-
-to pull the latest version and rebuild the dependencies.
-
-All these can be done at the prompt of Julia's package manager:
-
-
-```julia
-... pkg> add https://github.com/emmt/InterProcessCommunication.jl.git"
-... pkg> build InterProcessCommunication
-... pkg> test InterProcessCommunication
-... pkg> update InterProcessCommunication
-... pkg> build InterProcessCommunication
-```
-
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [doc-stable-url]: https://emmt.github.io/InterProcessCommunication.jl/stable
 
