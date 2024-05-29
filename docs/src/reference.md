@@ -67,6 +67,8 @@ clock_gettime
 clock_settime
 gettimeofday
 nanosleep
+umask
+IPC.maskmode
 ```
 
 ## Exceptions

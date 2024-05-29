@@ -82,7 +82,7 @@ Constant `IPC.MASKMODE = 0o$(string(MASKMODE, base=8))` is a bit mask for the
 granted access permissions (in general it has its 9 least significant bits
 set).
 
-See also [`IPC.umask`](@ref).
+See also [`umask`](@ref).
 
 """
 maskmode(mode::Integer) :: mode_t =
