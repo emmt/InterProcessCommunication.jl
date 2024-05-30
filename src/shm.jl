@@ -70,21 +70,19 @@ function SharedMemory(key::Key, len::Integer;
     len ≥ 1 || throw_argument_error("bad number of bytes (", len, ")")
     flags = maskmode(perms) | (S_IRUSR|S_IWUSR|IPC_CREAT|IPC_EXCL)
     id = _shmget(key.value, len, flags)
-    if id < 0
-        throw_system_error("shmget")
-    end
+    id < zero(id) && throw_system_error("shmget")
 
     # Attach shared memory segment to process address space.
     ptr = _shmat(id, C_NULL, 0)
     if ptr == Ptr{Cvoid}(-1)
         errno = Libc.errno()
-        _shmctl(id, IPC_RMID, C_NULL)
+        _shmrm(id)
         throw_system_error("shmat", errno)
     end
-    if volatile && _shmctl(id, IPC_RMID, C_NULL) == -1
+    if volatile && _shmrm(id) == -1
         errno = Libc.errno()
         _shmdt(ptr)
-        throw_system_error("shmctl", errno)
+        throw_system_error("shmctl", errno) # NOTE _shmrm calls shmctl
     end
 
     # Instanciate Julia object.
@@ -300,7 +298,7 @@ shmrm(name::AbstractString) = begin
 end
 
 shmrm(id::ShmId) = begin
-    if _shmrm(name) != SUCCESS
+    if _shmrm(name) == -1
         # Only throw an error if not an already removed shared memory segment.
         errno = Libc.errno()
         if errno != Libc.EIDRM
