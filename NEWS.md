@@ -1,12 +1,17 @@
 # User visible changes in `InterProcessCommunication`
 
+# Version 0.1.3
+
+* Argument `readonly` is now a keyword in `ShmId` constructor and `shmid` method. Old
+  behavior where it was the optional last argument has been deprecated.
+
 # Version 0.1.2
 
 * Export `umask` to set the calling process's file mode creation mask.
 
 * When creating a semaphore, `Semaphore(...)` ignores the calling process's file mode
   creation mask for the access permissions while `open(Semaphore, ...)` masks the access
-  permissions against the process `umask`.
+  permissions against the process `umask` like `sem_open`.
 
 * Standard C types are no longer prefixed by `_typeof_`. For example, Julia equivalent of
   C `mode_t` is given by constant `IPC.mode_t`.

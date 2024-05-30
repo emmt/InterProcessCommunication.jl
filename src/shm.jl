@@ -92,7 +92,7 @@ function SharedMemory(key::Key, len::Integer;
 end
 
 SharedMemory(key::Key; readonly::Bool = false, kwds...) =
-    SharedMemory(ShmId(key, readonly); kwds...)
+    SharedMemory(ShmId(key; readonly=readonly); kwds...)
 
 function SharedMemory(id::ShmId; readonly::Bool=false)::SharedMemory{ShmId}
     len = sizeof(id)
@@ -256,7 +256,7 @@ See also: [`SharedMemory`](@ref), [`shmrm`](@ref).
 shmid(shm::SharedMemory) = shm.id
 shmid(arr::WrappedArray{T,N,<:SharedMemory}) where {T,N} = shmid(arr.mem)
 shmid(id::ShmId) = id
-shmid(key::Key, args...) = ShmId(key, args...)
+shmid(key::Key, args...; keys...) = ShmId(key, args...; keys...)
 
 Base.rm(shm::SharedMemory) = shmrm(shm)
 Base.rm(id::ShmId) = shmrm(id)
@@ -341,22 +341,17 @@ end
 @inline _workspace(size::Integer) = Array{UInt8}(undef, size)
 
 """
-# Get the identifier of an existing System V shared memory segment
+    id = ShmId(id)
+    id = ShmId(shm)
+    id = ShmId(arr)
+    id = ShmId(key; readlony=false)
 
-The following calls:
-
-```julia
-ShmId(id)                  -> id
-ShmId(arr)                 -> id
-ShmId(key, readlony=false) -> id
-```
-
-yield the the identifier of the existing System V shared memory segment
-associated with the value of the first argument.  `id` is the identifier of the
-shared memory segment, `arr` is an array attached to a System V shared memory
-segment and `key` is the key associated with the shared memory segment.  In
-that latter case, `readlony` can be set `true` to only request read-only
-access; otherwise read-write access is requested.
+yield the the identifier of the existing System V shared memory segment associated with
+the value of the first argument: `id` is the identifier of the shared memory segment,
+`shm` is a System V shared memory object, `arr` is an array attached to a System V shared
+memory segment, and `key` is the key associated with the shared memory segment. In that
+latter case, keyword `readlony` can be set `true` to request read-only access; otherwise
+read-write access is requested.
 
 See also: [`shmid`](@ref), [`shmget`](@ref).
 
@@ -364,7 +359,7 @@ See also: [`shmid`](@ref), [`shmget`](@ref).
 ShmId(id::ShmId) = id
 ShmId(shm::SharedMemory{ShmId}) = shmid(shm)
 ShmId(arr::WrappedArray{T,N,SharedMemory{ShmId}}) where {T,N} = shmid(arr)
-ShmId(key::Key, readonly::Bool = false) =
+ShmId(key::Key; readonly::Bool = false) =
     shmget(key, 0, (readonly ? S_IRUSR : (S_IRUSR|S_IWUSR)))
 
 """
@@ -568,4 +563,4 @@ end
 
 shminfo!(arg, info::ShmInfo) = shminfo!(ShmId(arg), info)
 
-shminfo!(key::Key, info::ShmInfo) = shminfo!(ShmId(key, true), info)
+shminfo!(key::Key, info::ShmInfo) = shminfo!(ShmId(key; readonly=true), info)
