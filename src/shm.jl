@@ -356,6 +356,8 @@ ShmId(arr::WrappedArray{T,N,SharedMemory{ShmId}}) where {T,N} = shmid(arr)
 ShmId(key::Key; readonly::Bool = false) =
     shmget(key, 0, (readonly ? S_IRUSR : (S_IRUSR|S_IWUSR)))
 
+@deprecate ShmId(key::Key, readonly::Bool)  ShmId(key; readonly=readonly) false
+
 """
     id = shmget(key, siz, flg)
 
