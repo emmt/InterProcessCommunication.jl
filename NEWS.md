@@ -5,6 +5,9 @@
 * Argument `readonly` is now a keyword in `ShmId` constructor and `shmid` method. Old
   behavior where it was the optional last argument has been deprecated.
 
+* Argument `shmctl` checks that the buffer is large enough. Call `IPC.unsafe_shmct` to
+  avoid this check or to directly pass a pointer.
+
 # Version 0.1.2
 
 * Export `umask` to set the calling process's file mode creation mask.

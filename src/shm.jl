@@ -333,7 +333,7 @@ function Base.sizeof(id::ShmId)
     # malloc/free or using a tuple unless the number of elements of the tuple
     # is small.
     buf = _workspace(_sizeof_struct_shmid_ds)
-    shmctl(id, IPC_STAT, buf)
+    unsafe_shmctl(id, IPC_STAT, buf)
     return _peek(_typeof_shm_segsz, buf, _offsetof_shm_segsz)
 end
 
@@ -449,25 +449,26 @@ _shmdt(ptr::Ptr{Cvoid}) =
     ccall(:shmdt, Cint, (Ptr{Cvoid},), ptr)
 
 """
+    shmctl(id, cmd, buf)
 
-```julia
-shmctl(id, cmd, buf)
-```
-
-performs the control operation specified by `cmd` on the System V shared memory
-segment whose identifier is given in `id`.  The `buf` argument is a pointer to
-a `shmid_ds` C structure.
+performs the control operation specified by `cmd` on the System V shared memory segment
+whose identifier is given in `id`. The `buf` argument is a byte array large enough to
+store a `shmid_ds` C structure.
 
 See also [`shminfo`](@ref), [`shmcfg`](@ref) and [`shmrm`](@ref).
 
 """
-shmctl(id::ShmId, cmd::Integer, buf::Union{DenseVector,Ptr}) =
-    systemerror("shmctl", _shmctl(id.value, cmd, buf) == -1)
-
-_shmctl(id::Integer, cmd::Integer, buf::Union{DenseVector,Ptr}) =
-    ccall(:shmctl, Cint, (Cint, Cint, Ptr{Cvoid}), id, cmd, buf)
+function shmctl(id::ShmId, cmd::Integer, buf::DenseVector)
+    isconcretetype(eltype(buf)) || throw(ArgumentError("buffer entries must have concrete type"))
+    sizeof(buf) ≥ _sizeof_struct_shmid_ds || throw(ArgumentError(
+        "buffer must have at least $(_sizeof_struct_shmid_ds) bytes"))
+    return unsafe_shmctl(id, cmd, buf)
+end
 
 _shmrm(id::Integer) = _shmctl(id, IPC_RMID, C_NULL)
+# This version does not checks its arguments, only the returned value.
+unsafe_shmctl(id::ShmId, cmd::Integer, buf) =
+    systemerror("shmctl", _shmctl(id.value, cmd, buf) == -1)
 
 """
 
@@ -486,15 +487,15 @@ See also [`ShmId`](@ref), [`shmget`](@ref), [`shmctl`](@ref) and
 [`SharedMemory`](@ref).
 
 """
-function shmcfg(id::ShmId, perms::_typeof_shm_perm_mode)
-    mask = convert(_typeof_shm_perm_mode, MASKMODE)
+function shmcfg(id::ShmId, perms::Integer)
+    perms = _typeof_shm_perm_mode(perms)
+    mask = _typeof_shm_perm_mode(MASKMODE)
     buf = _workspace(_sizeof_struct_shmid_ds)
-    shmctl(id, IPC_STAT, buf)
+    unsafe_shmctl(id, IPC_STAT, buf)
     mode = _peek(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode)
     if (mode & mask) != (perms & mask)
-        _poke!(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode,
-               (mode & ~mask) | (perms & mask))
-        shmctl(id, IPC_SET, buf)
+        _poke!(_typeof_shm_perm_mode, buf, _offsetof_shm_perm_mode, (mode & ~mask) | (perms & mask))
+        unsafe_shmctl(id, IPC_SET, buf)
     end
     return id
 end
@@ -544,7 +545,7 @@ the System V shared memory segment identified or associated with `arg`.  See
 """
 function shminfo!(id::ShmId, info::ShmInfo)
     buf = _workspace(_sizeof_struct_shmid_ds)
-    shmctl(id, IPC_STAT, buf)
+    unsafe_shmctl(id, IPC_STAT, buf)
     info.atime  = _peek(time_t,        buf, _offsetof_shm_atime)
     info.dtime  = _peek(time_t,        buf, _offsetof_shm_dtime)
     info.ctime  = _peek(time_t,        buf, _offsetof_shm_ctime)
