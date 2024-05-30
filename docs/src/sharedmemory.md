@@ -7,46 +7,43 @@ memory segments* which are identified by a key.
 
 ## Shared Memory Objects
 
-Shared memory objects are instances of `IPC.SharedMemory`.  A new shared memory
-object is created by calling:
+Shared memory objects are instances of `IPC.SharedMemory`. A new shared memory object is
+created by calling the constructor:
 
 ```julia
-SharedMemory(id, len; perms=0o600, volatile=true)
+shm = SharedMemory(id, len; perms=0o600, volatile=true)
 ```
 
-with `id` an identifier and `len` the size, in bytes, of the allocated memory.
-The identifier `id` can be a string starting by a `'/'` to create a POSIX
-shared memory object or a System V IPC key to create a BSD System V shared
-memory segment.  In this latter case, the key can be `IPC.PRIVATE` to
-automatically create a non-existing shared memory segment.
+with `id` an identifier and `len` the size, in bytes, of the allocated memory. The
+identifier `id` can be a string starting by a `'/'` to create a POSIX shared memory object
+or a System V IPC key to create a BSD System V shared memory segment. In this latter case,
+the key can be `IPC.PRIVATE` to automatically create a non-existing shared memory segment.
 
-Use keyword `perms` to specify which access permissions are granted.  By
-default, only reading and writing by the user is granted.
+Use keyword `perms` to specify the access permissions to be granted. By default, only
+reading and writing by the user are granted.
 
-Use keyword `volatile` to specify whether the shared memory is volatile or not.
-If non-volatile, the shared memory will remain accessible until explicit
-destruction or system reboot.  By default, the shared memory is destroyed when
-no longer in use.
+Use keyword `volatile` to specify whether the shared memory is volatile or not. If
+non-volatile, the shared memory will remain accessible until explicit destruction or
+system reboot. If volatile (the default), the shared memory is destroyed when no longer in
+use in use by any processes.
 
 To retrieve an existing shared memory object, call:
 
 ```julia
-SharedMemory(id; readonly=false)
+shm = SharedMemory(id; readonly=false)
 ```
 
-where `id` is the shared memory identifier (a string, an IPC key or a System V
-IPC identifier of shared memory segment as returned by `ShmId`).  Keyword
-`readonly` can be set true if only read access is needed.  Note that method
-`shmid(obj)` may be called to retrieve the identifier of the shared memory
-object `obj`.
+where `id` is the shared memory identifier (a string, an IPC key or a System V IPC
+identifier of shared memory segment as returned by [`ShmId`](@ref)). Keyword `readonly`
+can be set true if only read access is needed. Note that method `shmid(obj)` may be called
+to retrieve the identifier of the shared memory object `obj`.
 
-Some methods are extended for shared memory objects.  Assuming `shm` is an
-instance of `SharedMemory`, then:
+A number of accessors are available for a shared memory objects `shm`:
 
 ```julia
-pointer(shm)    # yields the base address of the shared memory
-sizeof(shm)     # yields the number of bytes of the shared memory
-shmid(shm)      # yields the identifier the shared memory
+pointer(shm)    # base address of the shared memory
+sizeof(shm)     # number of bytes of the shared memory
+shmid(shm)      # identifier of the shared memory
 ```
 
 To ensure that shared memory object `shm` is eventually destroyed, call:
@@ -67,17 +64,16 @@ The following methods and type give a lower-level access (compared to
 The following statements:
 
 ```julia
-ShmId(id)                  -> id
-ShmId(arr)                 -> id
-ShmId(key, readlony=false) -> id
+id = ShmId(id)
+id = ShmId(arr)
+id = ShmId(key; readlony=false)
 ```
 
-yield the the identifier of the existing System V shared memory segment
-associated with the value of the first argument.  `id` is the identifier of the
-shared memory segment, `arr` is an array attached to a System V shared memory
-segment and `key` is the key associated with the shared memory segment.  In
-that latter case, `readlony` can be set `true` to only request read-only
-access; otherwise read-write access is requested.
+yield the the identifier of the existing System V shared memory segment associated with
+the value of the first argument: `id` is the identifier of the shared memory segment,
+`arr` is an array attached to a System V shared memory segment, and `key` is the key
+associated with the shared memory segment. In that latter case, keyword `readlony` can be
+set `true` to request read-only access; otherwise read-write access is requested.
 
 
 ### Getting or creating a shared memory segment
@@ -85,25 +81,22 @@ access; otherwise read-write access is requested.
 Call:
 
 ```julia
-shmget(key, siz, flg) -> id
+id = shmget(key, siz, flg)
 ```
 
-to get the identifier of the shared memory segment associated with the System V
-IPC key `key`.  A new shared memory segment, with size equal to the value of
-`siz` (possibly rounded up to a multiple of the memory page size
-`IPC.PAGE_SIZE`), is created if `key` has the value `IPC.PRIVATE` or if
-`IPC_CREAT` is specified in the argument `flg`, `key` isn't `IPC.PRIVATE` and
-no shared memory segment corresponding to `key` exists.
+to get the identifier of the System V shared memory segment associated with the System V
+IPC key `key`. A new shared memory segment with size `siz` (in bytes, possibly rounded up
+to a multiple of the memory page size `IPC.PAGE_SIZE`) is created if `key` has the value
+`IPC.PRIVATE` or if bit `IPC_CREAT` is set in `flg` and no shared memory segment
+corresponding to `key` exists.
 
-Argument `flg` is a bitwise combination of flags.  The least significant 9 bits
-specify the permissions granted to the owner, group, and others.  These bits
-have the same format, and the same meaning, as the mode argument of `chmod`.
-Bit `IPC_CREAT` can be set to create a new segment.  If
-this flag is not used, then `shmget` will find the segment associated with
-`key` and check to see if the user has permission to access the segment.  Bit
-`IPC_EXCL` can be set in addition to `IPC_CREAT` to ensure that this call
-creates the segment.  If `IPC_EXCL` and `IPC_CREAT` are both set, the call will
-fail if the segment already exists.
+Argument `flg` is a bitwise combination of flags. The least significant 9 bits specify the
+permissions granted to the owner, group, and others. These bits have the same format, and
+the same meaning, as the mode argument of `chmod`. Bit `IPC_CREAT` can be set to create a
+new segment. If this flag is not used, then `shmget` will find the segment associated with
+`key` and check to see if the user has permission to access the segment. Bit `IPC_EXCL`
+can be set in addition to `IPC_CREAT` to ensure that this call creates the segment. If
+`IPC_EXCL` and `IPC_CREAT` are both set, the call will fail if the segment already exists.
 
 
 ### Attaching and detaching shared memory
@@ -111,15 +104,14 @@ fail if the segment already exists.
 Call:
 
 ```julia
-shmat(id, readonly) -> ptr
+ptr = shmat(id, readonly)
 ```
 
-to attach an existing shared memory segment to the address space of the caller.
-Argument `id` is the identifier of the shared memory segment.  Boolean argument
-`readonly` specifies whether to attach the segment for read-only access;
-otherwise, the segment is attached for read and write accesses and the process
-must have read and write permissions for the segment.  The returned value is a
-pointer to the shared memory segment in the caller address space.
+attaches a System V shared memory segment to the address space of the caller. Argument
+`id` is the identifier of the shared memory segment. Boolean argument `readonly` specifies
+whether to attach the segment for read-only access; otherwise, the segment is attached for
+read and write accesses and the process must have read and write permissions for the
+segment. The returned value is the address of the shared memory segment for the caller.
 
 Assuming `ptr` is the pointer returned by a previous `shmat()` call:
 
@@ -132,19 +124,18 @@ detaches the System V shared memory segment from the address space of the caller
 
 ### Destroying shared memory
 
-To remove shared memory assoicaite with `arg`, call:
+To remove shared memory associated with `arg`, call:
 
 ```julia
 shmrm(arg)
 ```
 
-If `arg` is a name, the corresponding POSIX named shared memory is unlinked.
-If `arg` is a key or identifier of a BSD shared memory segment, the segment is
-marked to be eventually destroyed.  Argument `arg` can also be a `SharedMemory`
-object.
+If `arg` is a name, the corresponding POSIX named shared memory is unlinked. If `arg` is a
+key or identifier of a BSD shared memory segment, the segment is marked to be eventually
+destroyed. Argument `arg` can also be a `SharedMemory` object.
 
-The `rm` method may also be called to remove an existing shared memory segment
-or object:
+The `rm` method may also be called to remove an existing shared memory segment or
+object:
 
 ```julia
 rm(SharedMemory, name)
@@ -188,8 +179,8 @@ to perform and `buf` is a buffer large enough to store a `shmid_ds` C structure
 To retrieve information about a System V shared memory segment, call one of:
 
 ```julia
-shminfo(arg) -> info
-ShmInfo(arg) -> info
+info = shminfo(arg)
+info = ShmInfo(arg)
 ```
 
 with `arg` the identifier of the shared memory segment, a shared array attached
