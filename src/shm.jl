@@ -322,6 +322,20 @@ end
 # Their arguments may be slightly different.
 #
 
+_shmget(key::Integer, siz::Integer, flg::Integer) =
+    ccall(:shmget, Cint, (key_t, Csize_t, Cint), key, siz, flg)
+
+_shmat(id::Integer, ptr::Ptr{Cvoid}, flg::Integer) =
+    ccall(:shmat, Ptr{Cvoid}, (Cint, Ptr{Cvoid}, Cint), id, ptr, flg)
+
+_shmdt(ptr::Ptr{Cvoid}) =
+    ccall(:shmdt, Cint, (Ptr{Cvoid},), ptr)
+
+_shmctl(id::Integer, cmd::Integer, buf) =
+    ccall(:shmctl, Cint, (Cint, Cint, Ptr{Cvoid}), id, cmd, buf)
+
+_shmrm(id::Integer) = _shmctl(id, IPC_RMID, C_NULL)
+
 Base.convert(::Type{Cint}, id::ShmId) = id.value
 Base.convert(::Type{T}, id::ShmId) where {T<:Integer} = convert(T, id.value)
 
@@ -402,10 +416,6 @@ function shmget(key::Key, siz::Integer, flg::Integer)
     return ShmId(id)
 end
 
-_shmget(key::Integer, siz::Integer, flg::Integer) =
-    ccall(:shmget, Cint, (key_t, Csize_t, Cint), key, siz, flg)
-
-
 """
 ```julia
 shmat(id, readonly) -> ptr
@@ -428,10 +438,6 @@ function shmat(id::ShmId, readonly::Bool)
     return ptr
 end
 
-_shmat(id::Integer, ptr::Ptr{Cvoid}, flg::Integer) =
-    ccall(:shmat, Ptr{Cvoid}, (Cint, Ptr{Cvoid}, Cint), id, ptr, flg)
-
-
 """
 ```julia
 shmdt(ptr)
@@ -444,9 +450,6 @@ See also: [`shmdt`](@ref), [`shmget`](@ref).
 
 """
 shmdt(ptr::Ptr{Cvoid}) = systemerror("shmdt", _shmdt(ptr) != SUCCESS)
-
-_shmdt(ptr::Ptr{Cvoid}) =
-    ccall(:shmdt, Cint, (Ptr{Cvoid},), ptr)
 
 """
     shmctl(id, cmd, buf)
@@ -465,7 +468,6 @@ function shmctl(id::ShmId, cmd::Integer, buf::DenseVector)
     return unsafe_shmctl(id, cmd, buf)
 end
 
-_shmrm(id::Integer) = _shmctl(id, IPC_RMID, C_NULL)
 # This version does not checks its arguments, only the returned value.
 unsafe_shmctl(id::ShmId, cmd::Integer, buf) =
     systemerror("shmctl", _shmctl(id.value, cmd, buf) == -1)
