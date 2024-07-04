@@ -104,7 +104,7 @@ umask(mask::Integer) =
     ccall(:umask, mode_t, (mode_t,), mask)
 
 _open(path::AbstractString, flags::Integer, mode::Integer) =
-    ccall(:open, Cint, (Cstring, Cint, mode_t), path, flags, mode)
+    ccall(:open, Cint, (Cstring, Cint, mode_t...), path, flags, mode)
 
 _creat(path::AbstractString, mode::Integer) =
     _open(path, O_CREAT|O_WRONLY|O_TRUNC, mode)
