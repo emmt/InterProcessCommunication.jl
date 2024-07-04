@@ -202,7 +202,7 @@ _sem_destroy(sem::Ptr{Cvoid}) =
 #------------------------------------------------------------------------------
 # FILE DESCRIPTOR
 
-Base.stat(obj::FileDescriptor) = stat(obj.fd)
+Base.stat(obj::FileDescriptor) = stat(RawFD(obj.fd))
 
 function Base.open(::Type{FileDescriptor}, path::AbstractString,
                    flags::Integer, mode::Integer=DEFAULT_MODE)
