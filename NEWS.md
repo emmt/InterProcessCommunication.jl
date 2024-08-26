@@ -1,5 +1,10 @@
 # User visible changes in `InterProcessCommunication`
 
+# Version 0.1.4
+
+* `convert(RawFD, f)` and `RawFD(f)` yield the raw file descriptor of `FileDescriptor`
+  instance `f`.
+
 # Version 0.1.3
 
 * Argument `readonly` is now a keyword in `ShmId` constructor and `shmid` method. Old
