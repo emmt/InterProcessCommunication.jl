@@ -25,6 +25,8 @@ end
     end
     f = open(IPC.FileDescriptor, path, "r")
     @test fd(f) ≥ 0
+    @test RawFD(f) === RawFD(fd(f))
+    @test convert(RawFD, f) === RawFD(fd(f))
     @test filesize(f) == sizeof(data)
     @test position(f) == 0
     @test seekend(f) == position(f) == sizeof(data)
