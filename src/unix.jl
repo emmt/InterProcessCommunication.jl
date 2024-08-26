@@ -112,7 +112,6 @@ _creat(path::AbstractString, mode::Integer) =
 _close(fd::Integer) =
     ccall(:close, Cint, (Cint,), fd)
 
-
 _read(fd::Integer, buf::Union{DenseArray,Ptr}, cnt::Integer) =
     ccall(:read, ssize_t, (Cint, Ptr{Cvoid}, size_t),
           fd, buf, cnt)
@@ -202,7 +201,7 @@ _sem_destroy(sem::Ptr{Cvoid}) =
 #------------------------------------------------------------------------------
 # FILE DESCRIPTOR
 
-Base.stat(obj::FileDescriptor) = stat(RawFD(obj.fd))
+Base.stat(obj::FileDescriptor) = stat(RawFD(obj))
 
 function Base.open(::Type{FileDescriptor}, path::AbstractString,
                    flags::Integer, mode::Integer=DEFAULT_MODE)
@@ -255,6 +254,8 @@ function _close(obj::FileDescriptor)
 end
 
 Base.fd(obj::FileDescriptor) = obj.fd
+Base.RawFD(obj::FileDescriptor) = RawFD(fd(obj))
+Base.convert(::Type{RawFD}, obj::FileDescriptor) = RawFD(obj)
 
 function Base.position(obj::FileDescriptor)
     off = _lseek(fd(obj), 0, SEEK_CUR)
