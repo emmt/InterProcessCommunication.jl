@@ -238,19 +238,15 @@ function Base.open(::Type{FileDescriptor}, path::AbstractString,
     return open(FileDescriptor, path, flags0|flags1, mode)
 end
 
-function Base.close(obj::FileDescriptor)
-    # We must take care of not closing twice.
-    if (fd = obj.fd) != -1
-        obj.fd = -1
-        systemerror("close", _close(fd) == -1)
-    end
-end
+Base.close(obj::FileDescriptor) = _close(obj; throw_errors = true)
 
-function _close(obj::FileDescriptor)
-    if (fd = obj.fd) != -1
-        obj.fd = -1
-        _close(fd)
+function _close(obj::FileDescriptor; throw_errors::Bool = false)
+    if isopen(obj)
+        r = _close(fd(obj))
+        obj.fd = -1 # take care of not closing again
+        throw_errors && !iszero(r) && systemerror("close")
     end
+    return nothing
 end
 
 Base.fd(obj::FileDescriptor) = obj.fd
