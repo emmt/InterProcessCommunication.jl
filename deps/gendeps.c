@@ -756,10 +756,10 @@ int main(int argc, char* argv[])
 #ifdef SIGTERM
   DEF_CONST(SIGTERM, "   = Cint(%2d) # Termination signal");
 #endif
-#ifdef SIGUSR
+#ifdef SIGUSR1
   DEF_CONST(SIGUSR1, "   = Cint(%2d) # User-defined signal 1");
 #endif
-#ifdef SIGUSR
+#ifdef SIGUSR2
   DEF_CONST(SIGUSR2, "   = Cint(%2d) # User-defined signal 2");
 #endif
 #ifdef SIGCHLD
