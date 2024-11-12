@@ -1,7 +1,7 @@
 name = "InterProcessCommunication"
 uuid = "a7427343-1d15-5490-a218-bfcb7db836a2"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
