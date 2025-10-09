@@ -137,7 +137,7 @@ function SharedMemory(name::AbstractString,
     else
         # Get the size of the existing shared memory object.
         try
-            nbytes = Int(filesize(fd))
+            nbytes = Int(filesize(RawFD(fd)))
         catch err
             _close(fd)
             rethrow(err)
