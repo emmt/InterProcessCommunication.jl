@@ -1,5 +1,10 @@
 # User visible changes in `InterProcessCommunication`
 
+# Version 0.1.6 [2025-10-16]
+
+* Fix getting file size on a file descriptor (thanks to Carroll Vance, see [PR
+  15](https://github.com/emmt/InterProcessCommunication.jl/pull/115)).
+
 # Version 0.1.5
 
 * Fix definition of constants `SIGUSR1` and `SIGUSR2` (see [PR 12](https://github.com/emmt/InterProcessCommunication.jl/pull/12)).
