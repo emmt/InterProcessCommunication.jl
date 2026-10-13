@@ -445,6 +445,32 @@ end
     GC.gc() # call garbage collector to exercise the finalizers
 end
 
+@testset "POSIX shm permissions " begin
+    # macOS declares `shm_open` as variadic. Passing `mode` as a fixed argument puts it
+    # in a register on Apple arm64, where variadic arguments go on the stack, so the
+    # object gets arbitrary permissions and cannot be reopened by name.
+    begin
+        len = 100
+        name = "/shmperm-$(getpid())"
+        rm(SharedMemory, name)
+        A = SharedMemory(name, len; perms = 0o600)
+        fd = IPC._shm_open(name, IPC.O_RDONLY, 0)
+        @test fd ≥ 0
+        if fd ≥ 0
+            @test stat(RawFD(fd)).mode & 0o777 == 0o600
+            IPC._close(fd)
+        end
+        unsafe_store!(convert(Ptr{UInt8}, pointer(A)), 0x2a, len)
+        for readonly in (false, true)
+            B = SharedMemory(name; readonly = readonly)
+            @test sizeof(B) ≥ len
+            @test unsafe_load(convert(Ptr{UInt8}, pointer(B)), len) == 0x2a
+        end
+        rm(SharedMemory, name)
+    end
+    GC.gc()
+end
+
 @testset "Wrapped Shared Arrays " begin
     begin
         T = Float32
