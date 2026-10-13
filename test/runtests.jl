@@ -236,7 +236,8 @@ end
     t0 = float(clock_gettime(CLOCK_MONOTONIC))
     nanosleep(s)
     t1 = float(clock_gettime(CLOCK_MONOTONIC))
-    @test abs(t1 - (t0 + s)) ≤ 4ms
+    # Sleeps overshoot by tens of milliseconds on shared macOS CI runners.
+    @test abs(t1 - (t0 + s)) ≤ (Sys.isapple() ? 100ms : 4ms)
 end
 
 @testset "Signals               " begin
