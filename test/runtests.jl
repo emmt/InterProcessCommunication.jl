@@ -460,7 +460,7 @@ end
         fd = IPC._shm_open(name, IPC.O_RDONLY, 0)
         @test fd ≥ 0
         if fd ≥ 0
-            @test stat(RawFD(fd)).mode & 0o777 == 0o600
+            @test IPC._fdmode(fd) & 0o777 == 0o600
             IPC._close(fd)
         end
         unsafe_store!(convert(Ptr{UInt8}, pointer(A)), 0x2a, len)
