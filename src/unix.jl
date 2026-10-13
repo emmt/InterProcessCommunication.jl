@@ -160,8 +160,16 @@ _msync(addr::Ptr, len::Integer, flags::Integer) =
 _munmap(addr::Ptr, len::Integer) =
     ccall(:munmap, Cint, (Ptr{Cvoid}, size_t), addr, len)
 
-_shm_open(path::AbstractString, flags::Integer, mode::Integer) =
-    ccall(:shm_open, Cint, (Cstring, Cint, mode_t), path, flags, mode)
+@static if Sys.isapple()
+    # Unlike POSIX, macOS declares `shm_open(const char *, int, ...)`, so `mode` must be
+    # passed as a variadic argument (promoted to an `int`), otherwise it ends up in the
+    # wrong place on Apple arm64.
+    _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
+        ccall(:shm_open, Cint, (Cstring, Cint, Cuint...), path, flags, mode)
+else
+    _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
+        ccall(:shm_open, Cint, (Cstring, Cint, mode_t), path, flags, mode)
+end
 
 _shm_unlink(path::AbstractString) =
     ccall(:shm_unlink, Cint, (Cstring,), path)

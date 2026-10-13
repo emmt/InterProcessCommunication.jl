@@ -423,7 +423,10 @@ end
         B = SharedMemory(id; readonly=false)
         C = SharedMemory(id; readonly=true)
         @test shmid(A) == shmid(B) == shmid(C) == name
-        @test sizeof(A) == sizeof(B) == sizeof(C) == len
+        @test sizeof(A) == len
+        @test sizeof(B) == sizeof(C)
+        # macOS rounds the size of a POSIX shared memory object up to the page size.
+        @test Sys.isapple() ? sizeof(B) ≥ len : sizeof(B) == len
         Aptr = convert(Ptr{T},pointer(A))
         Bptr = convert(Ptr{T},pointer(B))
         Cptr = convert(Ptr{T},pointer(C))

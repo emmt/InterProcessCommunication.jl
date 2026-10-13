@@ -44,6 +44,9 @@ A number of accessors are available for a shared memory objects `shm`:
     sizeof(shm)     # number of bytes of the shared memory
     shmid(shm)      # identifier of the shared memory
 
+On macOS, the size of an existing POSIX shared memory object is rounded up to a multiple of
+the page size, so `sizeof(shm)` may exceed the size requested at creation.
+
 To ensure that shared memory object `shm` is eventually destroyed, call:
 
     rm(shm)
