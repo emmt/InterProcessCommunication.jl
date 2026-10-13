@@ -238,7 +238,7 @@ function sigprocmask!(how::Integer, set::SigSet, old::SigSet)
 end
 
 _sigprocmask(how::Integer, set::Ref{SigSet}, old::Ref{SigSet}) =
-    ccall(_sigprocmask_symbol, Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
+    ccall(cglobal(_sigprocmask_symbol), Cint, (Cint, Ptr{SigSet}, Ptr{SigSet}),
           how, set, old)
 """
 ```julia
