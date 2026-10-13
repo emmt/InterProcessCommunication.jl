@@ -283,7 +283,7 @@ shmrm(name::AbstractString) = begin
 end
 
 shmrm(id::ShmId) = begin
-    if _shmrm(name) == -1
+    if _shmrm(id.value) == -1
         # Only throw an error if not an already removed shared memory segment.
         errno = Libc.errno()
         if errno != Libc.EIDRM

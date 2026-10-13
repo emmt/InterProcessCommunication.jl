@@ -376,7 +376,10 @@ end
         T = Int
         n = 10
         len = n*sizeof(Int)
-        A = SharedMemory(IPC.PRIVATE, len)
+        # POSIX removes the identifier at IPC_RMID; Linux keeps it usable until the last detach.
+        # So on macOS a volatile segment cannot be reopened by its identifier.
+        volatile = !Sys.isapple()
+        A = SharedMemory(IPC.PRIVATE, len; volatile = volatile)
         id = shmid(A)
         @test isa(id, ShmId)
         @test id == ShmId(A)
@@ -404,8 +407,17 @@ end
         @test ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
                     Aptr, 0, len) == Aptr
         @test all(unsafe_load(Cptr, i) == 0 for i in 1:n)
+        volatile || shmrm(id)
     end
     GC.gc() # call garbage collector to exercise the finalizers
+end
+
+@testset "System V shmrm        " begin
+    # A segment that is not attached is destroyed as soon as it is removed.
+    id = shmget(IPC.PRIVATE, 100, IPC.IPC_CREAT | IPC.S_IRUSR | IPC.S_IWUSR)
+    @test sizeof(id) == 100
+    @test shmrm(id) === nothing
+    @test_throws SystemError sizeof(id)
 end
 
 @testset "Shared Memory (POSIX) " begin
@@ -482,7 +494,9 @@ end
             if isa(key, String)
                 try; shmrm(key); catch err; end
             end
-            A = WrappedArray(key, T, dims)
+            # See "Shared Memory (BSD)" for why System V segments are not volatile on macOS.
+            volatile = !(Sys.isapple() && key isa IPC.Key)
+            A = WrappedArray(key, T, dims; volatile = volatile)
             id = shmid(A)
             if isa(id, ShmId)
                 info = ShmInfo(id)
@@ -510,6 +524,7 @@ end
             @test ccall(:memset, Ptr{Cvoid}, (Ptr{Cvoid}, Cint, Csize_t),
                         A, 0, sizeof(A)) == pointer(A)
             @test extrema(C) == (0, 0)
+            volatile || shmrm(id)
         end
     end
     GC.gc() # call garbage collector to exercise the finalizers
