@@ -261,6 +261,39 @@ end
     set = sigpending()
     @test all(set[i] == false for i in 1:sigrtmax)
 
+    # sigprocmask: exercise querying and changing the process signal mask
+    # to catch any regressions in libraries/Julia.
+    # Previously, Julia 1.13 stopped accepting a `Symbol`-valued constant as the
+    # first argument of `ccall` (it now requires a literal symbol or a `Ptr`),
+    # so `_sigprocmask` resolves its target with `cglobal` instead. Every call
+    # below reaches that `ccall`, so on Julia 1.13 with unpatched `_sigprocmask`
+    # they would all raise a `TypeError` rather than return the expected signal
+    # masks.
+    signum = (isdefined(IPC, :SIGUSR1) ? IPC.SIGUSR1 : sigrtmin)
+    # Query the current mask and make sure our test signal starts unblocked so
+    # that the round-trip assertions below are meaningful. Restore at the end.
+    saved = sigprocmask()
+    @test saved isa SigSet
+    sigprocmask(IPC.SIG_UNBLOCK, (let s = SigSet(); s[signum] = true; s; end))
+    @test sigprocmask()[signum] == false
+    # Block the signal and verify the new mask reflects it.
+    block = SigSet(); block[signum] = true
+    sigprocmask(IPC.SIG_BLOCK, block)
+    @test sigprocmask()[signum] == true
+    # Three-argument sigprocmask! must report the previous mask (signal blocked)
+    # while applying the new one (signal unblocked).
+    prev = SigSet()
+    @test sigprocmask!(IPC.SIG_UNBLOCK, block, prev) === prev
+    @test prev[signum] == true
+    @test sigprocmask()[signum] == false
+    # sigprocmask!(cur) overwrites and returns its argument with the current mask.
+    cur = SigSet()
+    @test sigprocmask!(cur) === cur
+    @test cur[signum] == false
+    # Restore the original process signal mask.
+    sigprocmask(IPC.SIG_SETMASK, saved)
+    @test sigprocmask()[signum] == saved[signum]
+
     # SigInfo:
     si = SigInfo()
 
