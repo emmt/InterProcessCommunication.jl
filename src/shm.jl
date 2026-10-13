@@ -44,6 +44,9 @@ A number of accessors are available for a shared memory objects `shm`:
     sizeof(shm)     # number of bytes of the shared memory
     shmid(shm)      # identifier of the shared memory
 
+On macOS, the size of an existing POSIX shared memory object is rounded up to a multiple of
+the page size, so `sizeof(shm)` may exceed the size requested at creation.
+
 To ensure that shared memory object `shm` is eventually destroyed, call:
 
     rm(shm)
@@ -137,7 +140,7 @@ function SharedMemory(name::AbstractString,
     else
         # Get the size of the existing shared memory object.
         try
-            nbytes = Int(filesize(RawFD(fd)))
+            nbytes = _fdsize(fd)
         catch err
             _close(fd)
             rethrow(err)
@@ -280,7 +283,7 @@ shmrm(name::AbstractString) = begin
 end
 
 shmrm(id::ShmId) = begin
-    if _shmrm(name) == -1
+    if _shmrm(id.value) == -1
         # Only throw an error if not an already removed shared memory segment.
         errno = Libc.errno()
         if errno != Libc.EIDRM

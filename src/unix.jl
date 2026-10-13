@@ -160,11 +160,38 @@ _msync(addr::Ptr, len::Integer, flags::Integer) =
 _munmap(addr::Ptr, len::Integer) =
     ccall(:munmap, Cint, (Ptr{Cvoid}, size_t), addr, len)
 
-_shm_open(path::AbstractString, flags::Integer, mode::Integer) =
-    ccall(:shm_open, Cint, (Cstring, Cint, mode_t), path, flags, mode)
+@static if Sys.isapple()
+    # Unlike POSIX, macOS declares `shm_open(const char *, int, ...)`, so `mode` must be
+    # passed as a variadic argument (promoted to an `int`), otherwise it ends up in the
+    # wrong place on Apple arm64.
+    _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
+        ccall(:shm_open, Cint, (Cstring, Cint, Cuint...), path, flags, mode)
+else
+    _shm_open(path::AbstractString, flags::Integer, mode::Integer) =
+        ccall(:shm_open, Cint, (Cstring, Cint, mode_t), path, flags, mode)
+end
 
 _shm_unlink(path::AbstractString) =
     ccall(:shm_unlink, Cint, (Cstring,), path)
+
+# Size and permissions of an open file descriptor.
+@static if Sys.isapple()
+    # On macOS, `fstat` reports no file type for POSIX shared memory, and some Julia versions
+    # then throw "stat returned zero type for a valid path" in `stat(RawFD(fd))`. Call
+    # Julia's own `fstat` wrapper and accessors instead, which skip that check and do not
+    # depend on the layout of `struct stat`.
+    function _fstat(fd::Integer)
+        buf = zeros(UInt8, ccall(:jl_sizeof_stat, Int32, ()))
+        r = ccall(:jl_fstat, Int32, (Cint, Ptr{UInt8}), fd, buf)
+        r == 0 || throw_system_error("fstat", -r) # libuv returns -errno
+        return buf
+    end
+    _fdsize(fd::Integer) = Int(ccall(:jl_stat_size, UInt64, (Ptr{UInt8},), _fstat(fd)))
+    _fdmode(fd::Integer) = ccall(:jl_stat_mode, UInt32, (Ptr{UInt8},), _fstat(fd))
+else
+    _fdsize(fd::Integer) = Int(filesize(RawFD(fd)))
+    _fdmode(fd::Integer) = filemode(RawFD(fd))
+end
 
 _sem_open(path::AbstractString, flags::Integer, mode::Integer, value::Unsigned) =
     ccall(:sem_open, Ptr{Cvoid}, (Cstring, Cint, mode_t, Cuint),
